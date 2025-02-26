@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { ArrowRight, Check, Download, CreditCard, Mail, Lock, ArrowLeft } from "lucide-react";
+import { ArrowRight, Check, Download, CreditCard, Mail, Lock } from "lucide-react";
 import { loadStripe, StripeCardElement } from "@stripe/stripe-js";
 import {
   Elements,
@@ -18,7 +18,6 @@ import {
   DialogDescription,
   DialogClose,
   InnerDialog,
-  InnerDialogTrigger,
   InnerDialogContent,
   InnerDialogHeader,
   InnerDialogFooter,
@@ -419,243 +418,250 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     );
   }
 
+  // Custom DialogTrigger handler
+  const handleDialogTriggerClick = () => {
+    // If user has subscription but not just completed payment
+    if (paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE && !currentTransaction) {
+      onDownload();
+      return;
+    }
+    setOpen(true);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(newOpen) => {
-      // If dialog is opening and user has subscription but not just completed payment
-      if (newOpen && paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE && !currentTransaction) {
-        onDownload();
-        return; // Don't open dialog
-      }
-      setOpen(newOpen);
-    }}>
+    <Dialog>
       <DialogTrigger asChild>
-        {trigger || <Button>Open Paywall</Button>}
+        <span onClick={handleDialogTriggerClick}>
+          {trigger || <Button>Open Paywall</Button>}
+        </span>
       </DialogTrigger>
       
-      <DialogContent className="p-0 sm:max-w-[450px]">
-        {/* Plan Selection */}
-        {!showSuccess && (
-          <>
-            <DialogHeader className="border-b p-4">
-              <DialogTitle>Download CSV</DialogTitle>
-              <DialogDescription>
-                Choose a payment option to download the enhanced meta data.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="p-4">
-              <div className="grid grid-cols-1 gap-4">
-                <Button 
-                  onClick={() => selectPlan('one_time')}
-                  className="w-full justify-between"
-                  variant="outline"
-                >
-                  <div className="flex flex-col items-start">
-                    <span className="font-medium">One-time Purchase</span>
-                    <span className="text-xs text-muted-foreground">Download this file only</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="font-bold">$0.99</span>
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </div>
-                </Button>
-                
-                <Button 
-                  onClick={() => selectPlan('subscription')}
-                  className="w-full justify-between"
-                >
-                  <div className="flex flex-col items-start">
-                    <span className="font-medium">Monthly Subscription</span>
-                    <span className="text-xs text-muted-foreground">Unlimited downloads</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="font-bold">$3.99/mo</span>
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </div>
-                </Button>
-              </div>
-            </div>
-            
-            <DialogFooter className="border-t p-4">
-              <DialogClose asChild>
-                <Button type="button" variant="ghost">
-                  Cancel
-                </Button>
-              </DialogClose>
-            </DialogFooter>
-          </>
-        )}
-        
-        {/* Success View */}
-        {showSuccess && (
-          <>
-            <DialogHeader className="border-b p-4">
-              <DialogTitle>Thank You!</DialogTitle>
-              <DialogDescription>
-                Your payment was successful. You can now download the enhanced meta data.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="flex flex-col items-center justify-center p-6 space-y-4">
-              <div className="bg-green-100 rounded-full p-3">
-                <Check className="h-8 w-8 text-green-600" />
-              </div>
-              <h3 className="text-xl font-medium">Payment Successful</h3>
-              
-              {currentTransaction === 'subscription' && (
-                <p className="text-center text-sm text-muted-foreground">
-                  Your subscription is now active. You can download any files without additional payments.
-                </p>
-              )}
-              
-              {currentTransaction === 'one_time' && (
-                <p className="text-center text-sm text-muted-foreground">
-                  Your one-time purchase is complete. This allows you to download this file only.
-                </p>
-              )}
-            </div>
-            
-            <DialogFooter className="border-t p-4">
-              <Button onClick={handleDownload} className="w-full">
-                <Download className="mr-2 h-4 w-4" />
-                Download CSV
-              </Button>
-            </DialogFooter>
-          </>
-        )}
-        
-        {/* Authentication Inner Dialog */}
-        <InnerDialog>
-          {showAuthDialog && (
-            <InnerDialogContent className="sm:max-w-[400px] p-0">
-              <InnerDialogHeader className="border-b p-4">
-                <InnerDialogTitle>{authMode === 'signin' ? 'Sign In' : 'Create Account'}</InnerDialogTitle>
-                <InnerDialogDescription>
-                  {authMode === 'signin' 
-                    ? 'Enter your credentials to access your account' 
-                    : 'Create a new account to continue with your purchase'}
-                </InnerDialogDescription>
-              </InnerDialogHeader>
+      {open && (
+        <DialogContent className="p-0 sm:max-w-[450px]">
+          {/* Plan Selection */}
+          {!showSuccess && (
+            <>
+              <DialogHeader className="border-b p-4">
+                <DialogTitle>Download CSV</DialogTitle>
+                <DialogDescription>
+                  Choose a payment option to download the enhanced meta data.
+                </DialogDescription>
+              </DialogHeader>
               
               <div className="p-4">
-                <form onSubmit={authMode === 'signin' ? handleSignIn : handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <label htmlFor="email" className="text-sm font-medium">
-                      Email
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com"
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label htmlFor="password" className="text-sm font-medium">
-                      Password
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="pl-10"
-                        required
-                        minLength={6}
-                      />
-                    </div>
-                  </div>
-                  
-                  {authError && (
-                    <div className="text-red-500 text-sm">{authError}</div>
-                  )}
-                  
-                  <Button type="submit" className="w-full" disabled={isAuthProcessing}>
-                    {isAuthProcessing ? (
-                      <>
-                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                        {authMode === 'signin' ? 'Signing in...' : 'Creating account...'}
-                      </>
-                    ) : (
-                      <>{authMode === 'signin' ? 'Sign In' : 'Create Account'}</>
-                    )}
-                  </Button>
-                </form>
-                
-                <div className="mt-4 text-center text-sm">
-                  {authMode === 'signin' ? "Don't have an account?" : "Already have an account?"}
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
-                    className="ml-1 font-medium text-primary hover:underline"
+                <div className="grid grid-cols-1 gap-4">
+                  <Button 
+                    onClick={() => selectPlan('one_time')}
+                    className="w-full justify-between"
+                    variant="outline"
                   >
-                    {authMode === 'signin' ? "Create one" : "Sign in"}
-                  </button>
+                    <div className="flex flex-col items-start">
+                      <span className="font-medium">One-time Purchase</span>
+                      <span className="text-xs text-muted-foreground">Download this file only</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="font-bold">$0.99</span>
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </div>
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => selectPlan('subscription')}
+                    className="w-full justify-between"
+                  >
+                    <div className="flex flex-col items-start">
+                      <span className="font-medium">Monthly Subscription</span>
+                      <span className="text-xs text-muted-foreground">Unlimited downloads</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="font-bold">$3.99/mo</span>
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </div>
+                  </Button>
                 </div>
               </div>
               
-              <InnerDialogFooter className="border-t p-4">
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  onClick={() => setShowAuthDialog(false)}
-                  className="w-full"
-                >
-                  Cancel
-                </Button>
-              </InnerDialogFooter>
-            </InnerDialogContent>
+              <DialogFooter className="border-t p-4">
+                <DialogClose asChild>
+                  <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                    Cancel
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </>
           )}
-        </InnerDialog>
-        
-        {/* Payment Inner Dialog */}
-        <InnerDialog>
-          {selectedPlan && user && !showSuccess && (
-            <InnerDialogContent className="sm:max-w-[400px] p-0" position="top">
-              <InnerDialogHeader className="border-b p-4">
-                <InnerDialogTitle>
-                  {selectedPlan === 'one_time' ? 'One-time Purchase' : 'Monthly Subscription'}
-                </InnerDialogTitle>
-                <InnerDialogDescription>
-                  Enter your payment details to complete your purchase.
-                </InnerDialogDescription>
-              </InnerDialogHeader>
+          
+          {/* Success View */}
+          {showSuccess && (
+            <>
+              <DialogHeader className="border-b p-4">
+                <DialogTitle>Thank You!</DialogTitle>
+                <DialogDescription>
+                  Your payment was successful. You can now download the enhanced meta data.
+                </DialogDescription>
+              </DialogHeader>
               
-              <div className="p-4">
-                <Elements stripe={stripePromise}>
-                  <CheckoutForm 
-                    priceId={selectedPlan === 'one_time' ? ONE_TIME_PRICE_ID : SUBSCRIPTION_PRICE_ID}
-                    paymentType={selectedPlan}
-                    onPaymentSuccess={handlePaymentSuccess}
-                    onPaymentError={handlePaymentError}
-                  />
-                </Elements>
+              <div className="flex flex-col items-center justify-center p-6 space-y-4">
+                <div className="bg-green-100 rounded-full p-3">
+                  <Check className="h-8 w-8 text-green-600" />
+                </div>
+                <h3 className="text-xl font-medium">Payment Successful</h3>
+                
+                {currentTransaction === 'subscription' && (
+                  <p className="text-center text-sm text-muted-foreground">
+                    Your subscription is now active. You can download any files without additional payments.
+                  </p>
+                )}
+                
+                {currentTransaction === 'one_time' && (
+                  <p className="text-center text-sm text-muted-foreground">
+                    Your one-time purchase is complete. This allows you to download this file only.
+                  </p>
+                )}
               </div>
               
-              <InnerDialogFooter className="border-t p-4">
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  onClick={() => setSelectedPlan(null)}
-                  className="w-full"
-                >
-                  Back
+              <DialogFooter className="border-t p-4">
+                <Button onClick={handleDownload} className="w-full">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download CSV
                 </Button>
-              </InnerDialogFooter>
-            </InnerDialogContent>
+              </DialogFooter>
+            </>
           )}
-        </InnerDialog>
-      </DialogContent>
+          
+          {/* Authentication Inner Dialog */}
+          <InnerDialog>
+            {showAuthDialog && (
+              <InnerDialogContent className="sm:max-w-[400px] p-0">
+                <InnerDialogHeader className="border-b p-4">
+                  <InnerDialogTitle>{authMode === 'signin' ? 'Sign In' : 'Create Account'}</InnerDialogTitle>
+                  <InnerDialogDescription>
+                    {authMode === 'signin' 
+                      ? 'Enter your credentials to access your account' 
+                      : 'Create a new account to continue with your purchase'}
+                  </InnerDialogDescription>
+                </InnerDialogHeader>
+                
+                <div className="p-4">
+                  <form onSubmit={authMode === 'signin' ? handleSignIn : handleSignUp} className="space-y-4">
+                    <div className="space-y-2">
+                      <label htmlFor="email" className="text-sm font-medium">
+                        Email
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                        <Input
+                          id="email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@example.com"
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="password" className="text-sm font-medium">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                        <Input
+                          id="password"
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="pl-10"
+                          required
+                          minLength={6}
+                        />
+                      </div>
+                    </div>
+                    
+                    {authError && (
+                      <div className="text-red-500 text-sm">{authError}</div>
+                    )}
+                    
+                    <Button type="submit" className="w-full" disabled={isAuthProcessing}>
+                      {isAuthProcessing ? (
+                        <>
+                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                          {authMode === 'signin' ? 'Signing in...' : 'Creating account...'}
+                        </>
+                      ) : (
+                        <>{authMode === 'signin' ? 'Sign In' : 'Create Account'}</>
+                      )}
+                    </Button>
+                  </form>
+                  
+                  <div className="mt-4 text-center text-sm">
+                    {authMode === 'signin' ? "Don't have an account?" : "Already have an account?"}
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+                      className="ml-1 font-medium text-primary hover:underline"
+                    >
+                      {authMode === 'signin' ? "Create one" : "Sign in"}
+                    </button>
+                  </div>
+                </div>
+                
+                <InnerDialogFooter className="border-t p-4">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => setShowAuthDialog(false)}
+                    className="w-full"
+                  >
+                    Cancel
+                  </Button>
+                </InnerDialogFooter>
+              </InnerDialogContent>
+            )}
+          </InnerDialog>
+          
+          {/* Payment Inner Dialog */}
+          <InnerDialog>
+            {selectedPlan && user && !showSuccess && (
+              <InnerDialogContent className="sm:max-w-[400px] p-0" position="top">
+                <InnerDialogHeader className="border-b p-4">
+                  <InnerDialogTitle>
+                    {selectedPlan === 'one_time' ? 'One-time Purchase' : 'Monthly Subscription'}
+                  </InnerDialogTitle>
+                  <InnerDialogDescription>
+                    Enter your payment details to complete your purchase.
+                  </InnerDialogDescription>
+                </InnerDialogHeader>
+                
+                <div className="p-4">
+                  <Elements stripe={stripePromise}>
+                    <CheckoutForm 
+                      priceId={selectedPlan === 'one_time' ? ONE_TIME_PRICE_ID : SUBSCRIPTION_PRICE_ID}
+                      paymentType={selectedPlan}
+                      onPaymentSuccess={handlePaymentSuccess}
+                      onPaymentError={handlePaymentError}
+                    />
+                  </Elements>
+                </div>
+                
+                <InnerDialogFooter className="border-t p-4">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => setSelectedPlan(null)}
+                    className="w-full"
+                  >
+                    Back
+                  </Button>
+                </InnerDialogFooter>
+              </InnerDialogContent>
+            )}
+          </InnerDialog>
+        </DialogContent>
+      )}
     </Dialog>
   );
 }
