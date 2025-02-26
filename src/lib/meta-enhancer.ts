@@ -1,5 +1,6 @@
 
 import { ColumnDetectionResult, MetaData } from "./types";
+import { supabase } from "@/integrations/supabase/client";
 
 const MAX_TITLE_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 160;
@@ -76,11 +77,8 @@ async function enhanceWithAI(text: string, isTitle: boolean, maxLength: number):
   if (!text) return '';
   
   try {
-    const response = await fetch('/api/enhance-meta', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    // Call Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke('enhance-meta', {
       body: JSON.stringify({
         text,
         isTitle,
@@ -88,13 +86,11 @@ async function enhanceWithAI(text: string, isTitle: boolean, maxLength: number):
       }),
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Error enhancing with AI');
+    if (error) {
+      throw new Error(`Error enhancing with AI: ${error.message}`);
     }
     
-    const data = await response.json();
-    return data.enhancedText || '';
+    return data?.enhancedText || '';
   } catch (error) {
     console.error('AI enhancement failed:', error);
     // Fall back to rule-based enhancement
