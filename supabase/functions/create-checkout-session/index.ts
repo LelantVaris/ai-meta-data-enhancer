@@ -52,31 +52,36 @@ serve(async (req) => {
     
     // If user is authenticated, try to find or create a Stripe customer
     if (userId && userEmail) {
-      // Check if user has a Stripe customer ID
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("stripe_customer_id")
-        .eq("id", userId)
-        .single();
-        
-      if (profile?.stripe_customer_id) {
-        customerId = profile.stripe_customer_id;
-      } else {
-        // Create a new Stripe customer
-        const customer = await stripe.customers.create({
-          email: userEmail,
-          metadata: {
-            userId: userId,
-          },
-        });
-        
-        customerId = customer.id;
-        
-        // Update user profile with Stripe customer ID
-        await supabase
+      try {
+        // Check if user has a Stripe customer ID
+        const { data: profile } = await supabase
           .from("profiles")
-          .update({ stripe_customer_id: customerId })
-          .eq("id", userId);
+          .select("stripe_customer_id")
+          .eq("id", userId)
+          .single();
+          
+        if (profile?.stripe_customer_id) {
+          customerId = profile.stripe_customer_id;
+        } else {
+          // Create a new Stripe customer
+          const customer = await stripe.customers.create({
+            email: userEmail,
+            metadata: {
+              userId: userId,
+            },
+          });
+          
+          customerId = customer.id;
+          
+          // Update user profile with Stripe customer ID
+          await supabase
+            .from("profiles")
+            .update({ stripe_customer_id: customerId })
+            .eq("id", userId);
+        }
+      } catch (err) {
+        console.error("Error creating/finding customer:", err);
+        // Continue without customer ID if there's an error
       }
     }
     
@@ -91,7 +96,7 @@ serve(async (req) => {
       payment_method_types: ["card"],
       line_items: [
         {
-          price: price,
+          price: price, // Now using the actual Stripe price ID
           quantity: quantity,
         },
       ],

@@ -28,6 +28,21 @@ export enum PaymentStatus {
   PAID = "paid",
 }
 
+// Define types for our tables to fix the TypeScript errors
+interface Subscription {
+  id: string;
+  user_id: string;
+  status: string;
+  created_at: string;
+}
+
+interface Purchase {
+  id: string;
+  user_id: string;
+  status: string;
+  created_at: string;
+}
+
 export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProps) {
   const [open, setOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.NOT_PAID);
@@ -44,7 +59,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          price: 'price_one_time', // This would be your actual Stripe price ID
+          price: 'price_1QwmgmIN4GhAoTF75P3B2Drd', // One-time purchase product ID
           quantity: 1,
           mode: 'payment',
         }),
@@ -84,7 +99,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          price: 'price_subscription', // This would be your actual Stripe subscription price ID
+          price: 'price_1Qwmh1IN4GhAoTF78TJEw5Ek', // Subscription product ID
           quantity: 1,
           mode: 'subscription',
         }),
@@ -123,10 +138,9 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session) {
-      // User is logged in, check subscription status
-      // We'll use a more generic approach with custom queries to avoid type issues
-      const { data: subscriptions, error: subError } = await supabase
-        .from('subscriptions')
+      // Use type assertion to work around TypeScript errors
+      const { data: subscriptions } = await supabase
+        .from('subscriptions' as any)
         .select('*')
         .eq('user_id', session.user.id)
         .eq('status', 'active');
@@ -136,8 +150,8 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
         setPaymentStatus(PaymentStatus.PAID);
       } else {
         // Check if user has made a one-time purchase
-        const { data: purchases, error: purchaseError } = await supabase
-          .from('purchases')
+        const { data: purchases } = await supabase
+          .from('purchases' as any)
           .select('*')
           .eq('user_id', session.user.id)
           .eq('status', 'succeeded');
