@@ -138,24 +138,34 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session) {
-      // Use a raw query to avoid TypeScript errors
-      const { data: subscriptions, error: subError } = await supabase
-        .rpc('check_user_subscription', { user_id_param: session.user.id })
-        .catch(() => ({ data: null, error: { message: 'Error checking subscription' } }));
+      try {
+        // Instead of using RPC functions which may not exist yet, 
+        // directly query the tables with a workaround for TypeScript
+        const { count: subscriptionCount } = await supabase
+          .from('subscriptions')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', session.user.id)
+          .eq('status', 'active');
+          
+        if (subscriptionCount && subscriptionCount > 0) {
+          // User has an active subscription
+          setPaymentStatus(PaymentStatus.PAID);
+          return;
+        }
         
-      if (subscriptions && subscriptions > 0) {
-        // User has an active subscription
-        setPaymentStatus(PaymentStatus.PAID);
-        return;
-      }
-      
-      // Check for one-time purchases
-      const { data: purchases, error: purchaseError } = await supabase
-        .rpc('check_user_purchase', { user_id_param: session.user.id })
-        .catch(() => ({ data: null, error: { message: 'Error checking purchase' } }));
-        
-      if (purchases && purchases > 0) {
-        setPaymentStatus(PaymentStatus.PAID);
+        // Check for one-time purchases
+        const { count: purchaseCount } = await supabase
+          .from('purchases')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', session.user.id)
+          .eq('status', 'succeeded');
+          
+        if (purchaseCount && purchaseCount > 0) {
+          setPaymentStatus(PaymentStatus.PAID);
+        }
+      } catch (error) {
+        console.error("Error checking subscription status:", error);
+        // Fall back to NOT_PAID if there's an error
       }
     }
   };
