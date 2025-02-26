@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download } from "lucide-react";
 import {
@@ -33,16 +32,11 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Check if the user is authenticated
   useEffect(() => {
     if (open) {
       if (user) {
-        // Get user metadata
         const metadata = user.user_metadata;
         
-        // Check if user has paid status in metadata
-        // This assumes you're storing payment status in user metadata
-        // which is a common approach for simple payment systems
         if (metadata && metadata.paid_user) {
           setPaymentStatus(PaymentStatus.PAID);
         } else {
@@ -62,23 +56,18 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setPaymentStatus(PaymentStatus.PROCESSING);
     
     try {
-      // Redirect to checkout for one-time payment
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: {
           price: 'price_1QwmgmIN4GhAoTF75P3B2Drd', // One-time purchase product ID
           quantity: 1,
           mode: 'payment',
-        }),
+        },
       });
       
-      const { url } = await response.json();
+      if (error) throw error;
       
-      if (url) {
-        window.location.href = url;
+      if (data?.url) {
+        window.location.href = data.url;
       } else {
         setPaymentStatus(PaymentStatus.NOT_PAID);
         toast({
@@ -102,23 +91,18 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setPaymentStatus(PaymentStatus.PROCESSING);
     
     try {
-      // Redirect to checkout for subscription
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: {
           price: 'price_1Qwmh1IN4GhAoTF78TJEw5Ek', // Subscription product ID
           quantity: 1,
           mode: 'subscription',
-        }),
+        },
       });
       
-      const { url } = await response.json();
+      if (error) throw error;
       
-      if (url) {
-        window.location.href = url;
+      if (data?.url) {
+        window.location.href = data.url;
       } else {
         setPaymentStatus(PaymentStatus.NOT_PAID);
         toast({
