@@ -29,7 +29,7 @@ serve(async (req) => {
 
     const requestData = await req.json();
     const { price, quantity, mode, customerId, purchaseType = 'one_time' } = requestData;
-    const origin = req.headers.get("origin");
+    const origin = req.headers.get("origin") || 'http://localhost:3000'; // Fallback origin
     
     console.log("create-checkout-session: Request data:", {
       price,
@@ -40,40 +40,57 @@ serve(async (req) => {
       origin
     });
 
-    // Create checkout session
-    console.log("create-checkout-session: Creating checkout session");
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: price,
-          quantity: quantity,
-        },
-      ],
-      mode: mode,
-      success_url: `${origin}?payment_status=success`,
-      cancel_url: `${origin}?payment_status=cancel`,
-      client_reference_id: customerId,
-      metadata: {
-        supabase_user_id: customerId,
-        purchase_type: purchaseType,
-      },
-    });
+    // Validate required fields
+    if (!price) {
+      throw new Error("Missing price ID");
+    }
     
-    console.log("create-checkout-session: Session created with ID:", session.id);
-    console.log("create-checkout-session: Session URL:", session.url);
+    if (!customerId) {
+      throw new Error("Missing customer ID");
+    }
 
-    return new Response(
-      JSON.stringify({ url: session.url }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
-    );
-  } catch (error) {
+    // Create checkout session
+    console.log("create-checkout-session: Creating checkout session with stripe secret key length:", stripeSecretKey.length);
+    try {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price: price,
+            quantity: quantity || 1,
+          },
+        ],
+        mode: mode || 'payment',
+        success_url: `${origin}?payment_status=success`,
+        cancel_url: `${origin}?payment_status=cancel`,
+        client_reference_id: customerId,
+        metadata: {
+          supabase_user_id: customerId,
+          purchase_type: purchaseType,
+        },
+      });
+      
+      console.log("create-checkout-session: Session created with ID:", session.id);
+      console.log("create-checkout-session: Session URL:", session.url);
+
+      return new Response(
+        JSON.stringify({ url: session.url }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    } catch (stripeError: any) {
+      console.error("create-checkout-session: Stripe API error:", stripeError);
+      throw new Error(`Stripe API error: ${stripeError.message}`);
+    }
+  } catch (error: any) {
     console.error("create-checkout-session: Error creating session:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || "Unknown error occurred",
+        details: error.toString()
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,

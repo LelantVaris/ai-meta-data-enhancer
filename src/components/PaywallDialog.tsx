@@ -96,8 +96,10 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       localStorage.setItem('returnTo', currentPath);
       localStorage.setItem('shouldDownload', 'true');
       
-      console.log("PaywallDialog: Calling create-checkout-session function");
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      console.log("PaywallDialog: Calling create-checkout-session function with user ID:", user.id);
+      console.log("PaywallDialog: Using price ID:", ONE_TIME_PRICE_ID);
+      
+      const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
           price: ONE_TIME_PRICE_ID,
           quantity: 1,
@@ -107,31 +109,33 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
         },
       });
       
-      if (error) {
-        console.error("PaywallDialog: Error from create-checkout-session:", error);
-        throw error;
+      console.log("PaywallDialog: Full response from create-checkout-session:", response);
+      
+      if (response.error) {
+        console.error("PaywallDialog: Error from create-checkout-session:", response.error);
+        throw new Error(`Error creating checkout session: ${response.error.message || 'Unknown error'}`);
       }
       
-      console.log("PaywallDialog: Received checkout session data:", data);
+      if (!response.data) {
+        console.error("PaywallDialog: No data returned from checkout session");
+        throw new Error('No data returned from checkout session');
+      }
       
-      if (data?.url) {
-        console.log("PaywallDialog: Redirecting to Stripe checkout:", data.url);
-        window.location.href = data.url;
+      console.log("PaywallDialog: Received checkout session data:", response.data);
+      
+      if (response.data?.url) {
+        console.log("PaywallDialog: Redirecting to Stripe checkout:", response.data.url);
+        window.location.href = response.data.url;
       } else {
         console.error("PaywallDialog: No URL returned from checkout session");
-        setPaymentStatus(PaymentStatus.NOT_PAID);
-        toast({
-          title: "Error",
-          description: "Could not redirect to checkout page.",
-          variant: "destructive",
-        });
+        throw new Error('No URL returned from checkout session');
       }
-    } catch (error) {
-      console.error("PaywallDialog: Error redirecting to checkout:", error);
+    } catch (error: any) {
+      console.error("PaywallDialog: Error in payment flow:", error);
       setPaymentStatus(PaymentStatus.NOT_PAID);
       toast({
-        title: "Error",
-        description: "Could not process payment. Please try again.",
+        title: "Could not process payment",
+        description: error?.message || "Please try again or contact support.",
         variant: "destructive",
       });
     }
@@ -158,8 +162,10 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       localStorage.setItem('returnTo', currentPath);
       localStorage.setItem('shouldDownload', 'true');
       
-      console.log("PaywallDialog: Calling create-checkout-session function");
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      console.log("PaywallDialog: Calling create-checkout-session function with user ID:", user.id);
+      console.log("PaywallDialog: Using price ID:", SUBSCRIPTION_PRICE_ID);
+      
+      const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
           price: SUBSCRIPTION_PRICE_ID,
           quantity: 1,
@@ -169,31 +175,33 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
         },
       });
       
-      if (error) {
-        console.error("PaywallDialog: Error from create-checkout-session:", error);
-        throw error;
+      console.log("PaywallDialog: Full response from create-checkout-session:", response);
+      
+      if (response.error) {
+        console.error("PaywallDialog: Error from create-checkout-session:", response.error);
+        throw new Error(`Error creating checkout session: ${response.error.message || 'Unknown error'}`);
       }
       
-      console.log("PaywallDialog: Received checkout session data:", data);
+      if (!response.data) {
+        console.error("PaywallDialog: No data returned from checkout session");
+        throw new Error('No data returned from checkout session');
+      }
       
-      if (data?.url) {
-        console.log("PaywallDialog: Redirecting to Stripe checkout:", data.url);
-        window.location.href = data.url;
+      console.log("PaywallDialog: Received checkout session data:", response.data);
+      
+      if (response.data?.url) {
+        console.log("PaywallDialog: Redirecting to Stripe checkout:", response.data.url);
+        window.location.href = response.data.url;
       } else {
         console.error("PaywallDialog: No URL returned from checkout session");
-        setPaymentStatus(PaymentStatus.NOT_PAID);
-        toast({
-          title: "Error",
-          description: "Could not redirect to checkout page.",
-          variant: "destructive",
-        });
+        throw new Error('No URL returned from checkout session');
       }
-    } catch (error) {
-      console.error("PaywallDialog: Error redirecting to subscription checkout:", error);
+    } catch (error: any) {
+      console.error("PaywallDialog: Error in subscription flow:", error);
       setPaymentStatus(PaymentStatus.NOT_PAID);
       toast({
-        title: "Error",
-        description: "Could not process subscription. Please try again.",
+        title: "Could not process subscription",
+        description: error?.message || "Please try again or contact support.",
         variant: "destructive",
       });
     }
