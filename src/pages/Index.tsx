@@ -46,6 +46,7 @@ const Index = () => {
           
           if (error) {
             console.error("Index: Error updating subscription status:", error);
+            console.error("Index: Error details:", JSON.stringify(error));
             toast({
               title: "Payment successful",
               description: "But we couldn't update your account. Please contact support.",

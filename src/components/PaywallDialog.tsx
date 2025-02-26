@@ -102,34 +102,46 @@ function CheckoutForm({
       console.log("Payment confirmed with status:", paymentIntent.status);
 
       if (paymentIntent.status === 'succeeded') {
-        if (paymentType === 'subscription') {
-          console.log("Subscription payment succeeded, updating subscription status");
-          const { error: dbError } = await supabase
-            .from('user_subscriptions')
-            .upsert({
-              user_id: user.id,
-              subscription_status: 'active',
-              subscription_type: 'subscription',
-            }, { onConflict: 'user_id' });
+        // Store payment information in Supabase
+        try {
+          if (paymentType === 'subscription') {
+            console.log("Subscription payment succeeded, updating subscription status");
+            const { error: dbError } = await supabase
+              .from('user_subscriptions')
+              .upsert({
+                user_id: user.id,
+                subscription_status: 'active',
+                subscription_type: 'subscription',
+              }, { onConflict: 'user_id' });
 
-          if (dbError) {
-            console.error("Error updating subscription:", dbError);
-            // Continue anyway since payment was successful
-          }
-        } else {
-          console.log("One-time payment succeeded, recording transaction");
-          const { error: dbError } = await supabase
-            .from('user_subscriptions')
-            .upsert({
-              user_id: user.id,
-              subscription_status: 'completed',
-              subscription_type: 'one_time',
-            }, { onConflict: 'user_id' });
+            if (dbError) {
+              console.error("Error updating subscription:", dbError);
+              console.error("Error details:", JSON.stringify(dbError));
+              // Continue anyway since payment was successful
+            } else {
+              console.log("Successfully updated subscription status");
+            }
+          } else {
+            console.log("One-time payment succeeded, recording transaction");
+            const { error: dbError } = await supabase
+              .from('user_subscriptions')
+              .upsert({
+                user_id: user.id,
+                subscription_status: 'completed',
+                subscription_type: 'one_time',
+              }, { onConflict: 'user_id' });
 
-          if (dbError) {
-            console.error("Error recording one-time payment:", dbError);
-            // Continue anyway since payment was successful
+            if (dbError) {
+              console.error("Error recording one-time payment:", dbError);
+              console.error("Error details:", JSON.stringify(dbError));
+              // Continue anyway since payment was successful
+            } else {
+              console.log("Successfully recorded one-time payment");
+            }
           }
+        } catch (dbError) {
+          console.error("Database update error:", dbError);
+          // Continue anyway since payment was successful
         }
 
         onPaymentSuccess(paymentType);
@@ -235,6 +247,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       
       if (error) {
         console.error("Error checking subscription status:", error);
+        console.error("Error details:", JSON.stringify(error));
         setPaymentStatus(PaymentStatus.NOT_PAID);
         return;
       }
@@ -264,11 +277,21 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     }
   };
 
+  // Check subscription status whenever user changes
+  useEffect(() => {
+    if (user) {
+      checkSubscriptionStatus();
+    } else {
+      setPaymentStatus(PaymentStatus.NOT_PAID);
+    }
+  }, [user]);
+
+  // Also check when dialog opens
   useEffect(() => {
     if (open && user) {
       checkSubscriptionStatus();
     }
-  }, [open, user]);
+  }, [open]);
 
   const handlePaymentSuccess = (paymentType: 'one_time' | 'subscription') => {
     if (paymentType === 'subscription') {
@@ -283,6 +306,13 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       title: "Payment successful",
       description: "Thank you for your purchase!",
     });
+
+    // Force a recheck of subscription status
+    if (user) {
+      setTimeout(() => {
+        checkSubscriptionStatus();
+      }, 1000); // Give a small delay to ensure DB update has propagated
+    }
   };
 
   const handlePaymentError = (error: Error) => {
