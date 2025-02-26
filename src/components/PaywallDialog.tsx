@@ -36,8 +36,8 @@ interface PaywallDialogProps {
 
 export enum PaymentStatus {
   NOT_PAID = "not_paid",
-  PROCESSING = "processing",
-  PAID = "paid",
+  ONE_TIME_PAID = "one_time_paid",
+  SUBSCRIPTION_ACTIVE = "subscription_active",
 }
 
 function CheckoutForm({ 
@@ -48,7 +48,7 @@ function CheckoutForm({
 }: { 
   priceId: string; 
   paymentType: 'one_time' | 'subscription'; 
-  onPaymentSuccess: () => void; 
+  onPaymentSuccess: (paymentType: 'one_time' | 'subscription') => void; 
   onPaymentError: (error: Error) => void; 
 }) {
   const stripe = useStripe();
@@ -106,22 +106,39 @@ function CheckoutForm({
       console.log("Payment confirmed with status:", paymentIntent.status);
 
       if (paymentIntent.status === 'succeeded') {
-        // Step 3: Update subscription in database
-        console.log("Payment succeeded, updating subscription in database");
-        const { error: dbError } = await supabase
-          .from('user_subscriptions')
-          .upsert({
-            user_id: user.id,
-            subscription_status: 'active',
-            subscription_type: paymentType,
-          }, { onConflict: 'user_id' });
+        // Step 3: Update user record in database based on payment type
+        if (paymentType === 'subscription') {
+          console.log("Subscription payment succeeded, updating subscription status");
+          const { error: dbError } = await supabase
+            .from('user_subscriptions')
+            .upsert({
+              user_id: user.id,
+              subscription_status: 'active',
+              subscription_type: 'subscription',
+            }, { onConflict: 'user_id' });
 
-        if (dbError) {
-          console.error("Error updating subscription:", dbError);
-          // Continue anyway since payment was successful
+          if (dbError) {
+            console.error("Error updating subscription:", dbError);
+            // Continue anyway since payment was successful
+          }
+        } else {
+          // For one-time payments, we'll mark the transaction but not as an active subscription
+          console.log("One-time payment succeeded, recording transaction");
+          const { error: dbError } = await supabase
+            .from('user_subscriptions')
+            .upsert({
+              user_id: user.id,
+              subscription_status: 'completed',  // Not 'active' for one-time purchases
+              subscription_type: 'one_time',
+            }, { onConflict: 'user_id' });
+
+          if (dbError) {
+            console.error("Error recording one-time payment:", dbError);
+            // Continue anyway since payment was successful
+          }
         }
 
-        onPaymentSuccess();
+        onPaymentSuccess(paymentType);
       } else {
         console.error("Payment status not successful:", paymentIntent.status);
         throw new Error('Payment processing failed');
@@ -191,6 +208,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const [open, setOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.NOT_PAID);
   const [selectedPlan, setSelectedPlan] = useState<'one_time' | 'subscription' | null>(null);
+  const [currentTransaction, setCurrentTransaction] = useState<'one_time' | 'subscription' | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -199,44 +217,77 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const SUBSCRIPTION_PRICE_ID = 'price_1QwndqIN4GhAoTF7gUxlTCFx';
 
   useEffect(() => {
-    const checkSubscriptionStatus = async () => {
-      if (!open || !user) return;
+    // Reset payment status and selected plan when dialog opens/closes
+    if (!open) {
+      setSelectedPlan(null);
+      setCurrentTransaction(null);
+    } else {
+      checkSubscriptionStatus();
+    }
+  }, [open]);
+
+  // Check if user has active subscription
+  const checkSubscriptionStatus = async () => {
+    if (!user) {
+      setPaymentStatus(PaymentStatus.NOT_PAID);
+      return;
+    }
+    
+    try {
+      console.log("Checking subscription status for user:", user.id);
       
-      try {
-        console.log("Checking subscription status for user:", user.id);
-        // Use maybeSingle to handle case when no subscription exists
-        const { data, error } = await supabase
-          .from('user_subscriptions')
-          .select('subscription_status, subscription_type')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        if (error) {
-          console.error("Error checking subscription status:", error);
-          setPaymentStatus(PaymentStatus.NOT_PAID);
-          return;
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('subscription_status, subscription_type')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error checking subscription status:", error);
+        setPaymentStatus(PaymentStatus.NOT_PAID);
+        return;
+      }
+      
+      console.log("Subscription data:", data);
+      
+      if (!data) {
+        console.log("No subscription data found");
+        setPaymentStatus(PaymentStatus.NOT_PAID);
+      } else if (data.subscription_type === 'subscription' && data.subscription_status === 'active') {
+        console.log("User has active subscription");
+        setPaymentStatus(PaymentStatus.SUBSCRIPTION_ACTIVE);
+        // If they have an active subscription, immediately download without showing modal
+        if (open) {
+          handleDownload();
         }
-        
-        console.log("Subscription data:", data);
-        
-        if (data && data.subscription_status === 'active') {
-          console.log("User has active subscription");
-          setPaymentStatus(PaymentStatus.PAID);
-        } else {
-          console.log("User has no active subscription");
-          setPaymentStatus(PaymentStatus.NOT_PAID);
-        }
-      } catch (error) {
-        console.error("Error checking payment status:", error);
+      } else if (data.subscription_type === 'one_time' && data.subscription_status === 'completed') {
+        console.log("User has completed one-time purchase (but no active subscription)");
+        setPaymentStatus(PaymentStatus.ONE_TIME_PAID);
+      } else {
+        console.log("User has no active subscription");
         setPaymentStatus(PaymentStatus.NOT_PAID);
       }
-    };
-    
-    checkSubscriptionStatus();
+    } catch (error) {
+      console.error("Error checking payment status:", error);
+      setPaymentStatus(PaymentStatus.NOT_PAID);
+    }
+  };
+
+  useEffect(() => {
+    if (open && user) {
+      checkSubscriptionStatus();
+    }
   }, [open, user]);
 
-  const handlePaymentSuccess = () => {
-    setPaymentStatus(PaymentStatus.PAID);
+  const handlePaymentSuccess = (paymentType: 'one_time' | 'subscription') => {
+    if (paymentType === 'subscription') {
+      setPaymentStatus(PaymentStatus.SUBSCRIPTION_ACTIVE);
+    } else {
+      setPaymentStatus(PaymentStatus.ONE_TIME_PAID);
+    }
+    
+    setCurrentTransaction(paymentType);
+    
     toast({
       title: "Payment successful",
       description: "Thank you for your purchase!",
@@ -275,8 +326,34 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setSelectedPlan(null);
   };
 
+  // Handle dialog trigger click
+  const handleDialogTrigger = () => {
+    // If user has an active subscription, download immediately without showing dialog
+    if (paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE) {
+      onDownload();
+      return false; // Prevent dialog from opening
+    }
+    return true; // Allow dialog to open
+  };
+
+  // If user has active subscription, we don't need to show the dialog at all
+  if (paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE) {
+    return (
+      <span onClick={onDownload}>
+        {trigger}
+      </span>
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      // If trying to open the dialog but user has subscription, download instead
+      if (newOpen && paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE) {
+        onDownload();
+      } else {
+        setOpen(newOpen);
+      }
+    }}>
       <DialogTrigger asChild>
         {trigger || <Button>Open Paywall</Button>}
       </DialogTrigger>
@@ -331,7 +408,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           </>
         )}
         
-        {paymentStatus === PaymentStatus.NOT_PAID && selectedPlan && (
+        {(paymentStatus === PaymentStatus.NOT_PAID || paymentStatus === PaymentStatus.ONE_TIME_PAID) && selectedPlan && (
           <>
             <DialogHeader>
               <DialogTitle>
@@ -364,7 +441,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           </>
         )}
         
-        {paymentStatus === PaymentStatus.PAID && (
+        {currentTransaction && (
           <>
             <DialogHeader>
               <DialogTitle>Thank You!</DialogTitle>
@@ -377,6 +454,16 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
                 <Check className="h-8 w-8 text-green-600" />
               </div>
               <h3 className="mt-4 text-lg font-medium">Payment Successful</h3>
+              {currentTransaction === 'subscription' && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Your subscription is now active. You can download any files without additional payments.
+                </p>
+              )}
+              {currentTransaction === 'one_time' && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Your one-time purchase is complete. This allows you to download this file only.
+                </p>
+              )}
             </div>
             <DialogFooter>
               <Button onClick={handleDownload} className="w-full">
