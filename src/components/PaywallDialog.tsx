@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download } from "lucide-react";
 import {
@@ -53,6 +54,16 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   }, [open, user]);
 
   const handleOneTimePayment = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in before making a purchase.",
+        variant: "destructive",
+      });
+      setOpen(false);
+      return;
+    }
+    
     setPaymentStatus(PaymentStatus.PROCESSING);
     
     try {
@@ -61,6 +72,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           price: 'price_1QwmgmIN4GhAoTF75P3B2Drd', // One-time purchase product ID
           quantity: 1,
           mode: 'payment',
+          customerId: user.id,
         },
       });
       
@@ -88,6 +100,16 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   };
 
   const handleSubscription = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in before subscribing.",
+        variant: "destructive",
+      });
+      setOpen(false);
+      return;
+    }
+    
     setPaymentStatus(PaymentStatus.PROCESSING);
     
     try {
@@ -96,6 +118,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           price: 'price_1Qwmh1IN4GhAoTF78TJEw5Ek', // Subscription product ID
           quantity: 1,
           mode: 'subscription',
+          customerId: user.id,
         },
       });
       

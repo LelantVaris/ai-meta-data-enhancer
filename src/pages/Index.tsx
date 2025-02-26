@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { UserCircle, LogOut } from "lucide-react";
 import MetaEnhancer from "@/components/MetaEnhancer";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [searchParams] = useSearchParams();
@@ -18,20 +19,39 @@ const Index = () => {
   // Check for payment status in URL
   const paymentStatus = searchParams.get("payment_status");
   
-  // Show toast based on payment status
-  useState(() => {
-    if (paymentStatus === "success") {
-      toast({
-        title: "Payment successful!",
-        description: "Thank you for your purchase. You can now download the CSV file.",
-      });
-    } else if (paymentStatus === "cancel") {
-      toast({
-        title: "Payment cancelled",
-        description: "Your payment was cancelled. No charges were made.",
-      });
-    }
-  });
+  useEffect(() => {
+    const handlePaymentSuccess = async () => {
+      if (paymentStatus === "success" && user) {
+        try {
+          // Update user metadata to indicate they've paid
+          const { error } = await supabase.auth.updateUser({
+            data: { paid_user: true }
+          });
+          
+          if (error) throw error;
+          
+          toast({
+            title: "Payment successful!",
+            description: "Thank you for your purchase. You can now download CSV files anytime.",
+          });
+        } catch (error) {
+          console.error("Error updating user metadata:", error);
+          toast({
+            title: "Payment successful",
+            description: "But we couldn't update your account. Please contact support.",
+            variant: "destructive",
+          });
+        }
+      } else if (paymentStatus === "cancel") {
+        toast({
+          title: "Payment cancelled",
+          description: "Your payment was cancelled. No charges were made.",
+        });
+      }
+    };
+    
+    handlePaymentSuccess();
+  }, [paymentStatus, user, toast]);
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
