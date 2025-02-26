@@ -247,7 +247,8 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       } else if (data.subscription_type === 'subscription' && data.subscription_status === 'active') {
         console.log("User has active subscription");
         setPaymentStatus(PaymentStatus.SUBSCRIPTION_ACTIVE);
-        if (open) {
+        // Only auto-download if not a new subscription (success screen already showing)
+        if (open && !currentTransaction) {
           handleDownload();
         }
       } else if (data.subscription_type === 'one_time' && data.subscription_status === 'completed') {
@@ -316,8 +317,8 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setSelectedPlan(null);
   };
 
-  // Handle subscription users differently - they can directly download
-  if (paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE) {
+  // For subscription users, just attach the download function to the trigger
+  if (paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE && !currentTransaction) {
     return (
       <span onClick={onDownload}>
         {trigger}
@@ -325,24 +326,21 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     );
   }
 
-  // Determine if we should show the payment form
-  const showPaymentForm = selectedPlan !== null && paymentStatus !== PaymentStatus.SUBSCRIPTION_ACTIVE;
-  // Determine if we should show the plan selection
-  const showPlanSelection = !selectedPlan && paymentStatus === PaymentStatus.NOT_PAID;
-
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
-      if (newOpen && paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE) {
+      // If dialog is opening and user has subscription but not just completed payment
+      if (newOpen && paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE && !currentTransaction) {
         onDownload();
-      } else {
-        setOpen(newOpen);
+        return; // Don't open dialog
       }
+      setOpen(newOpen);
     }}>
       <DialogTrigger asChild>
         {trigger || <Button>Open Paywall</Button>}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        {showPlanSelection && (
+        {/* Initial plan selection */}
+        {!selectedPlan && paymentStatus === PaymentStatus.NOT_PAID && !currentTransaction && (
           <>
             <DialogHeader>
               <DialogTitle>Download CSV</DialogTitle>
@@ -392,7 +390,8 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           </>
         )}
         
-        {showPaymentForm && (
+        {/* Payment form */}
+        {selectedPlan && !currentTransaction && (
           <>
             <DialogHeader>
               <DialogTitle>
@@ -425,6 +424,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           </>
         )}
         
+        {/* Success message */}
         {currentTransaction && (
           <>
             <DialogHeader>
