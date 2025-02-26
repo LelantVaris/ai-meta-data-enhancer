@@ -1,7 +1,6 @@
 
 import { useState } from "react";
 import { ArrowRight, Check, Download } from "lucide-react";
-import { motion } from "framer-motion";
 import {
   Dialog,
   DialogClose,
@@ -13,7 +12,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,21 +24,6 @@ export enum PaymentStatus {
   NOT_PAID = "not_paid",
   PROCESSING = "processing",
   PAID = "paid",
-}
-
-// Define types for our tables to fix the TypeScript errors
-interface Subscription {
-  id: string;
-  user_id: string;
-  status: string;
-  created_at: string;
-}
-
-interface Purchase {
-  id: string;
-  user_id: string;
-  status: string;
-  created_at: string;
 }
 
 export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProps) {
@@ -133,40 +116,16 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setOpen(false);
   };
 
-  // Check if user is already subscribed
+  // Simplified function to check payment status
+  // In the future, we'll implement database queries once tables are properly created
   const checkUserSubscription = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session) {
-      try {
-        // Instead of using RPC functions which may not exist yet, 
-        // directly query the tables with a workaround for TypeScript
-        const { count: subscriptionCount } = await supabase
-          .from('subscriptions')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', session.user.id)
-          .eq('status', 'active');
-          
-        if (subscriptionCount && subscriptionCount > 0) {
-          // User has an active subscription
-          setPaymentStatus(PaymentStatus.PAID);
-          return;
-        }
-        
-        // Check for one-time purchases
-        const { count: purchaseCount } = await supabase
-          .from('purchases')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', session.user.id)
-          .eq('status', 'succeeded');
-          
-        if (purchaseCount && purchaseCount > 0) {
-          setPaymentStatus(PaymentStatus.PAID);
-        }
-      } catch (error) {
-        console.error("Error checking subscription status:", error);
-        // Fall back to NOT_PAID if there's an error
-      }
+      console.log("Logged in user:", session.user.id);
+      // For now, we'll simulate an unpaid status
+      // In the future, we'll query the database for subscriptions and purchases
+      setPaymentStatus(PaymentStatus.NOT_PAID);
     }
   };
 
