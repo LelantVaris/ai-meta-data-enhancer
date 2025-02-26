@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 
-// Initialize Stripe
+// Initialize Stripe with the public key
 const stripePromise = loadStripe('pk_test_51JmBHWIN4GhAoTF7hxK1ePDvtzAhTvzJbbV5JtZhHWGhkbcNeRSpQJ4TAXjDpTzS6TnQK4WPFl0HUvvSgWEGyNHs00ZsCbJCwJ');
 
 interface PaywallDialogProps {
@@ -132,6 +132,7 @@ function CheckoutForm({
         color: '#9e2146',
       },
     },
+    hidePostalCode: true, // This removes the ZIP code field
   };
 
   return (
