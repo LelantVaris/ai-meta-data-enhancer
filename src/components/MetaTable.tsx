@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   Table,
@@ -59,6 +59,11 @@ const MetaTable = ({ data }: MetaTableProps) => {
     });
   };
 
+  // Function to check if a field was AI-inferred based on empty original content
+  const wasInferred = (original: string): boolean => {
+    return !original || original.trim() === '';
+  };
+
   if (data.length === 0) {
     return (
       <div className="text-center p-8 border rounded-lg bg-white">
@@ -106,15 +111,32 @@ const MetaTable = ({ data }: MetaTableProps) => {
                     <Badge variant="outline" className="mb-1 text-xs font-normal bg-neutral-50 border-neutral-200">
                       {item.original_title.length} chars
                     </Badge>
-                    <p className="text-xs line-clamp-3 text-neutral-600">{item.original_title}</p>
+                    {item.original_title ? (
+                      <p className="text-xs line-clamp-3 text-neutral-600">{item.original_title}</p>
+                    ) : (
+                      <p className="text-xs line-clamp-3 text-neutral-400 italic">No original title provided</p>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="align-top py-4">
                   <div className="max-w-[180px] md:max-w-[300px] overflow-hidden">
-                    <Badge variant="outline" className="mb-1 text-xs font-normal bg-neutral-50 border-neutral-200">
-                      {item.enhanced_title.length} chars
-                    </Badge>
-                    <p className="text-xs line-clamp-3 text-neutral-600">{item.enhanced_title}</p>
+                    <div className="flex items-center gap-1 mb-1">
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs font-normal bg-neutral-50 border-neutral-200"
+                      >
+                        {item.enhanced_title.length} chars
+                      </Badge>
+                      {wasInferred(item.original_title) && (
+                        <Badge className="text-xs font-normal bg-violet-50 text-violet-700 border-violet-200 flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          <span>AI-Generated</span>
+                        </Badge>
+                      )}
+                    </div>
+                    <div className={`text-xs line-clamp-3 ${wasInferred(item.original_title) ? 'bg-gradient-to-r from-violet-50 to-transparent p-1.5 rounded-md border border-violet-100' : 'text-neutral-600'}`}>
+                      {item.enhanced_title}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="align-top py-4">
@@ -122,15 +144,32 @@ const MetaTable = ({ data }: MetaTableProps) => {
                     <Badge variant="outline" className="mb-1 text-xs font-normal bg-neutral-50 border-neutral-200">
                       {item.original_description.length} chars
                     </Badge>
-                    <p className="text-xs line-clamp-3 text-neutral-600">{item.original_description}</p>
+                    {item.original_description ? (
+                      <p className="text-xs line-clamp-3 text-neutral-600">{item.original_description}</p>
+                    ) : (
+                      <p className="text-xs line-clamp-3 text-neutral-400 italic">No original description provided</p>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="align-top py-4">
                   <div className="max-w-[180px] md:max-w-[300px] overflow-hidden">
-                    <Badge variant="outline" className="mb-1 text-xs font-normal bg-neutral-50 border-neutral-200">
-                      {item.enhanced_description.length} chars
-                    </Badge>
-                    <p className="text-xs line-clamp-3 text-neutral-600">{item.enhanced_description}</p>
+                    <div className="flex items-center gap-1 mb-1">
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs font-normal bg-neutral-50 border-neutral-200"
+                      >
+                        {item.enhanced_description.length} chars
+                      </Badge>
+                      {wasInferred(item.original_description) && (
+                        <Badge className="text-xs font-normal bg-violet-50 text-violet-700 border-violet-200 flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          <span>AI-Generated</span>
+                        </Badge>
+                      )}
+                    </div>
+                    <div className={`text-xs line-clamp-3 ${wasInferred(item.original_description) ? 'bg-gradient-to-r from-violet-50 to-transparent p-1.5 rounded-md border border-violet-100' : 'text-neutral-600'}`}>
+                      {item.enhanced_description}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="text-right align-top py-4">

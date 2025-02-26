@@ -17,18 +17,73 @@ const DESCRIPTION_SYSTEM_PROMPT =
 
 export function enhanceMeta(data: MetaData[]): MetaData[] {
   return data.map(item => {
-    // Process title with AI-like optimization
-    const enhancedTitle = enhanceWithAISimulation(item.original_title, true);
+    let originalTitle = item.original_title;
+    let originalDescription = item.original_description;
     
-    // Process description with AI-like optimization
-    const enhancedDescription = enhanceWithAISimulation(item.original_description, false);
+    // Handle missing fields by inferring from the other field
+    if (!originalTitle && originalDescription) {
+      // Generate title from description
+      originalTitle = inferTitleFromDescription(originalDescription);
+    } else if (originalTitle && !originalDescription) {
+      // Generate description from title
+      originalDescription = inferDescriptionFromTitle(originalTitle);
+    }
+    
+    // Process with AI-like optimization
+    const enhancedTitle = enhanceWithAISimulation(originalTitle, true);
+    const enhancedDescription = enhanceWithAISimulation(originalDescription, false);
     
     return {
       ...item,
+      original_title: originalTitle || '',
+      original_description: originalDescription || '',
       enhanced_title: enhancedTitle,
       enhanced_description: enhancedDescription
     };
   });
+}
+
+function inferTitleFromDescription(description: string): string {
+  if (!description) return '';
+  
+  // Extract key concepts from the first sentence
+  const firstSentence = description.split(/[.!?]/, 1)[0].trim();
+  
+  // Use the first 6-8 words or less if they're long words
+  const words = firstSentence.split(/\s+/);
+  const titleWords = words.slice(0, Math.min(7, words.length));
+  
+  // Make it look like a title with capitalization
+  let inferredTitle = titleWords.join(' ');
+  
+  // Capitalize each word (Title Case)
+  inferredTitle = inferredTitle
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+  
+  // Ensure it's not too long
+  return inferredTitle.length > MAX_TITLE_LENGTH 
+    ? inferredTitle.substring(0, MAX_TITLE_LENGTH - 3) + '...' 
+    : inferredTitle;
+}
+
+function inferDescriptionFromTitle(title: string): string {
+  if (!title) return '';
+  
+  // Expand the title into a descriptive sentence
+  const words = title.split(/\s+/);
+  
+  // Basic expansion template
+  let inferredDescription = `Learn about ${title.toLowerCase()}. `;
+  
+  // Add a call to action
+  inferredDescription += 'Discover key insights and practical information to enhance your understanding.';
+  
+  // Ensure it's not too long
+  return inferredDescription.length > MAX_DESCRIPTION_LENGTH 
+    ? inferredDescription.substring(0, MAX_DESCRIPTION_LENGTH - 3) + '...' 
+    : inferredDescription;
 }
 
 function enhanceWithAISimulation(text: string, isTitle: boolean): string {
