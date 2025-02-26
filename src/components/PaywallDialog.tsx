@@ -56,8 +56,6 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
         } else {
           setPaymentStatus(PaymentStatus.NOT_PAID);
         }
-        
-        console.log("User subscription status:", data);
       } catch (error) {
         console.error("Error checking payment status:", error);
         setPaymentStatus(PaymentStatus.NOT_PAID);
@@ -81,6 +79,10 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setPaymentStatus(PaymentStatus.PROCESSING);
     
     try {
+      // Store current URL in localStorage before redirect
+      localStorage.setItem('returnTo', window.location.pathname + window.location.search);
+      localStorage.setItem('shouldDownload', 'true');
+      
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: {
           price: 'price_1QwmgmIN4GhAoTF75P3B2Drd', // One-time purchase product ID
@@ -128,6 +130,10 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setPaymentStatus(PaymentStatus.PROCESSING);
     
     try {
+      // Store current URL in localStorage before redirect
+      localStorage.setItem('returnTo', window.location.pathname + window.location.search);
+      localStorage.setItem('shouldDownload', 'true');
+      
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: {
           price: 'price_1Qwmh1IN4GhAoTF78TJEw5Ek', // Subscription product ID
@@ -164,7 +170,16 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const handleDownload = () => {
     onDownload();
     setOpen(false);
+    // Clear the download flag after successful download
+    localStorage.removeItem('shouldDownload');
   };
+
+  // Auto-open dialog if returning from successful payment
+  useEffect(() => {
+    if (paymentStatus === PaymentStatus.PAID && localStorage.getItem('shouldDownload') === 'true') {
+      setOpen(true);
+    }
+  }, [paymentStatus]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

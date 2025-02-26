@@ -8,7 +8,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: corsHeaders,
@@ -21,13 +20,12 @@ serve(async (req) => {
       throw new Error("Missing Stripe secret key");
     }
 
-    // Initialize Stripe
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
     });
 
-    // Get request body
     const { price, quantity, mode, customerId, purchaseType = 'one_time' } = await req.json();
+    const origin = req.headers.get("origin");
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
@@ -39,9 +37,9 @@ serve(async (req) => {
         },
       ],
       mode: mode,
-      success_url: `${req.headers.get("origin")}?payment_status=success`,
-      cancel_url: `${req.headers.get("origin")}?payment_status=cancel`,
-      client_reference_id: customerId, // Store Supabase user ID as reference
+      success_url: `${origin}?payment_status=success`,
+      cancel_url: `${origin}?payment_status=cancel`,
+      client_reference_id: customerId,
       metadata: {
         supabase_user_id: customerId,
         purchase_type: purchaseType,

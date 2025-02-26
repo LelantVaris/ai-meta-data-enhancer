@@ -48,12 +48,21 @@ const Index = () => {
               title: "Payment successful!",
               description: "Thank you for your purchase. You can now download CSV files anytime.",
             });
+            
+            // Get the return URL from localStorage
+            const returnTo = localStorage.getItem('returnTo');
+            if (returnTo && returnTo !== window.location.pathname) {
+              navigate(returnTo);
+            }
           }
         } else if (paymentStatus === "cancel") {
           toast({
             title: "Payment cancelled",
             description: "Your payment was cancelled. No charges were made.",
           });
+          // Clear stored URL on cancel
+          localStorage.removeItem('returnTo');
+          localStorage.removeItem('shouldDownload');
         }
 
         // Clear the payment_status from URL to prevent multiple toasts
@@ -67,7 +76,7 @@ const Index = () => {
     };
     
     handlePaymentSuccess();
-  }, [paymentStatus, user, setSearchParams, toast]);
+  }, [paymentStatus, user, navigate, setSearchParams, toast]);
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
