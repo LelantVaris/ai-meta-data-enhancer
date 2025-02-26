@@ -79,6 +79,7 @@ const MetaEnhancer = () => {
                       <EnhanceButton
                         onClick={handleEnhance}
                         isProcessing={isProcessing}
+                        disabled={titleColumnIndex === -1 || descriptionColumnIndex === -1}
                       />
                     </div>
                   </div>

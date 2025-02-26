@@ -3,16 +3,16 @@ import { Button } from "@/components/ui/button";
 
 interface EnhanceButtonProps {
   isProcessing: boolean;
-  disabled: boolean;
+  disabled?: boolean;
   onClick: () => void;
 }
 
-const EnhanceButton = ({ isProcessing, disabled, onClick }: EnhanceButtonProps) => {
+const EnhanceButton = ({ isProcessing, disabled = false, onClick }: EnhanceButtonProps) => {
   return (
     <div className="mt-6">
       <Button
         onClick={onClick}
-        disabled={disabled}
+        disabled={disabled || isProcessing}
         className="w-full bg-neutral-900 hover:bg-neutral-800 text-white transition-all"
       >
         {isProcessing ? (

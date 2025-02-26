@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
-import { ColumnDetectionResult } from "@/lib/types";
 import { 
   Alert,
   AlertDescription,
@@ -17,19 +16,19 @@ import {
 } from "@/components/ui/select";
 
 interface ColumnSelectorProps {
-  columnDetection: ColumnDetectionResult;
+  headers: string[];
   titleColumnIndex: number;
   descriptionColumnIndex: number;
-  setTitleColumnIndex: (index: number) => void;
-  setDescriptionColumnIndex: (index: number) => void;
+  onTitleColumnChange: (index: number) => void;
+  onDescriptionColumnChange: (index: number) => void;
 }
 
 const ColumnSelector = ({
-  columnDetection,
+  headers,
   titleColumnIndex,
   descriptionColumnIndex,
-  setTitleColumnIndex,
-  setDescriptionColumnIndex
+  onTitleColumnChange,
+  onDescriptionColumnChange
 }: ColumnSelectorProps) => {
   return (
     <motion.div 
@@ -57,13 +56,13 @@ const ColumnSelector = ({
           </label>
           <Select 
             value={titleColumnIndex.toString()} 
-            onValueChange={(value) => setTitleColumnIndex(parseInt(value))}
+            onValueChange={(value) => onTitleColumnChange(parseInt(value))}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select column" />
             </SelectTrigger>
             <SelectContent>
-              {columnDetection.headers.map((header, index) => (
+              {headers.map((header, index) => (
                 <SelectItem key={index} value={index.toString()}>
                   {header}
                 </SelectItem>
@@ -78,13 +77,13 @@ const ColumnSelector = ({
           </label>
           <Select 
             value={descriptionColumnIndex.toString()} 
-            onValueChange={(value) => setDescriptionColumnIndex(parseInt(value))}
+            onValueChange={(value) => onDescriptionColumnChange(parseInt(value))}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select column" />
             </SelectTrigger>
             <SelectContent>
-              {columnDetection.headers.map((header, index) => (
+              {headers.map((header, index) => (
                 <SelectItem key={index} value={index.toString()}>
                   {header}
                 </SelectItem>
