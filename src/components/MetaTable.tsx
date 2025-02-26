@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Check, Copy, Sparkles, Edit, Save } from "lucide-react";
+import { Check, Copy, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   Table,
@@ -43,6 +43,18 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
     
     return () => clearTimeout(timer);
   }, [copiedItems]);
+
+  // Function to check if a field was completely AI-generated - DEFINED BEFORE USE
+  const wasGenerated = (original: string, enhanced: string): boolean => {
+    return !original || original.trim() === '';
+  };
+
+  // Function to check if a field was rewritten by AI - DEFINED BEFORE USE
+  const wasRewritten = (original: string, enhanced: string): boolean => {
+    return original && original.trim() !== '' && 
+           enhanced && enhanced.trim() !== '' && 
+           original.trim() !== enhanced.trim();
+  };
 
   // Sort data to prioritize items with AI content at the top
   const sortedData = useMemo(() => {
@@ -100,18 +112,6 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
         onDataChange(cleanData);
       }
     }
-  };
-
-  // Function to check if a field was completely AI-generated
-  const wasGenerated = (original: string, enhanced: string): boolean => {
-    return !original || original.trim() === '';
-  };
-
-  // Function to check if a field was rewritten by AI (had original content but was modified)
-  const wasRewritten = (original: string, enhanced: string): boolean => {
-    return original && original.trim() !== '' && 
-           enhanced && enhanced.trim() !== '' && 
-           original.trim() !== enhanced.trim();
   };
 
   if (data.length === 0) {
