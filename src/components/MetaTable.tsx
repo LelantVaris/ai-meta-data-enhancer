@@ -112,17 +112,17 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
       
       <div className="overflow-x-auto">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-neutral-100">
             <TableRow>
-              <TableHead className="w-[40%]">Meta Title</TableHead>
-              <TableHead className="w-[40%]">Meta Description</TableHead>
-              <TableHead className="w-[20%] text-right">Actions</TableHead>
+              <TableHead className="w-[300px] max-w-[300px]">Meta Title</TableHead>
+              <TableHead className="w-[400px] max-w-[400px]">Meta Description</TableHead>
+              <TableHead className="w-[100px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {editableData.map((item, index) => (
               <TableRow key={`row-${index}`}>
-                <TableCell className="align-top py-4">
+                <TableCell className="align-top py-4 w-[300px] max-w-[300px]">
                   <div className="space-y-2">
                     <div className="flex items-center gap-1 mb-1">
                       <Badge 
@@ -141,7 +141,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
                     
                     {/* Original title (greyed out) */}
                     {item.original_title ? (
-                      <p className="text-xs text-muted-foreground truncate max-w-full">
+                      <p className="text-xs text-muted-foreground break-words">
                         Original: {item.original_title}
                       </p>
                     ) : (
@@ -176,7 +176,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
                   </div>
                 </TableCell>
                 
-                <TableCell className="align-top py-4">
+                <TableCell className="align-top py-4 w-[400px] max-w-[400px]">
                   <div className="space-y-2">
                     <div className="flex items-center gap-1 mb-1">
                       <Badge 
@@ -195,7 +195,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
                     
                     {/* Original description (greyed out) */}
                     {item.original_description ? (
-                      <p className="text-xs text-muted-foreground truncate max-w-full">
+                      <p className="text-xs text-muted-foreground break-words">
                         Original: {item.original_description}
                       </p>
                     ) : (
@@ -232,7 +232,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
                   </div>
                 </TableCell>
                 
-                <TableCell className="text-right align-top py-4">
+                <TableCell className="text-right align-top py-4 w-[100px]">
                   <div className="flex flex-col gap-2 items-end">
                     <TooltipProvider>
                       <Tooltip>
