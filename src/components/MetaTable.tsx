@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, InputSkeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
@@ -209,7 +209,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
 
                     {/* Enhanced title input */}
                     {item.isLoading ? (
-                      <Skeleton className="w-full h-10" />
+                      <InputSkeleton className="h-10" />
                     ) : (
                       <Input
                         value={item.enhanced_title}
@@ -294,7 +294,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
 
                     {/* Enhanced description input */}
                     {item.isLoading ? (
-                      <Skeleton className="w-full h-20" />
+                      <InputSkeleton className="h-20" />
                     ) : (
                       <Textarea
                         value={item.enhanced_description}
