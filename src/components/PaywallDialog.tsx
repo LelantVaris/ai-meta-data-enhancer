@@ -1,7 +1,13 @@
 
 import { useEffect, useState } from "react";
-import { ArrowRight, Check, Download } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
+import { ArrowRight, Check, Download, CreditCard } from "lucide-react";
+import { loadStripe, Stripe, StripeCardElement } from "@stripe/stripe-js";
+import {
+  Elements,
+  CardElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 import {
   Dialog,
   DialogClose,
@@ -31,10 +37,137 @@ export enum PaymentStatus {
   PAID = "paid",
 }
 
-interface PaymentFormData {
-  cardNumber: string;
-  expiry: string;
-  cvc: string;
+function CheckoutForm({ 
+  priceId, 
+  paymentType, 
+  onPaymentSuccess, 
+  onPaymentError 
+}: { 
+  priceId: string; 
+  paymentType: 'one_time' | 'subscription'; 
+  onPaymentSuccess: () => void; 
+  onPaymentError: (error: Error) => void; 
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!stripe || !elements || !user) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setErrorMessage(null);
+
+    try {
+      // Create payment intent
+      const response = await supabase.functions.invoke('create-payment-intent', {
+        body: {
+          priceId,
+          customerId: user.id,
+          paymentType,
+        },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+      
+      const { clientSecret } = response.data;
+
+      // Confirm the payment
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement) as StripeCardElement,
+          billing_details: {
+            email: user.email,
+          },
+        },
+      });
+
+      if (stripeError) {
+        throw new Error(stripeError.message || 'Payment failed');
+      }
+
+      if (paymentIntent.status === 'succeeded') {
+        // Update subscription in database
+        const { error: dbError } = await supabase
+          .from('user_subscriptions')
+          .upsert({
+            user_id: user.id,
+            subscription_status: 'active',
+            subscription_type: paymentType,
+          }, { onConflict: 'user_id' });
+
+        if (dbError) {
+          console.error("Error updating subscription:", dbError);
+        }
+
+        onPaymentSuccess();
+      } else {
+        throw new Error('Payment processing failed');
+      }
+    } catch (error: any) {
+      console.error("Payment error:", error);
+      setErrorMessage(error.message || 'Payment failed. Please try again.');
+      onPaymentError(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const cardElementOptions = {
+    style: {
+      base: {
+        fontSize: '16px',
+        color: '#424770',
+        '::placeholder': {
+          color: '#aab7c4',
+        },
+      },
+      invalid: {
+        color: '#9e2146',
+      },
+    },
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <label className="block text-sm font-medium">
+          Card Details
+        </label>
+        <div className="border rounded-md p-3">
+          <CardElement options={cardElementOptions} />
+        </div>
+      </div>
+      
+      {errorMessage && (
+        <div className="text-red-500 text-sm">{errorMessage}</div>
+      )}
+      
+      <Button 
+        type="submit" 
+        disabled={!stripe || isProcessing} 
+        className="w-full"
+      >
+        {isProcessing ? (
+          <>
+            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+            Processing...
+          </>
+        ) : (
+          <>
+            <CreditCard className="mr-2 h-4 w-4" />
+            Pay Now
+          </>
+        )}
+      </Button>
+    </form>
+  );
 }
 
 export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProps) {
@@ -79,7 +212,29 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     checkSubscriptionStatus();
   }, [open, user]);
 
-  const handlePayment = async (paymentType: 'one_time' | 'subscription') => {
+  const handlePaymentSuccess = () => {
+    setPaymentStatus(PaymentStatus.PAID);
+    toast({
+      title: "Payment successful",
+      description: "Thank you for your purchase!",
+    });
+  };
+
+  const handlePaymentError = (error: Error) => {
+    setSelectedPlan(null);
+    toast({
+      title: "Payment failed",
+      description: error.message || "Please try again or contact support.",
+      variant: "destructive",
+    });
+  };
+
+  const handleDownload = () => {
+    onDownload();
+    setOpen(false);
+  };
+
+  const selectPlan = (plan: 'one_time' | 'subscription') => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -89,66 +244,12 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       setOpen(false);
       return;
     }
-
-    setSelectedPlan(paymentType);
-    setPaymentStatus(PaymentStatus.PROCESSING);
-
-    try {
-      const stripe = await stripePromise;
-      if (!stripe) throw new Error('Stripe failed to initialize');
-
-      const priceId = paymentType === 'one_time' ? ONE_TIME_PRICE_ID : SUBSCRIPTION_PRICE_ID;
-      
-      // Create payment intent
-      const response = await supabase.functions.invoke('create-payment-intent', {
-        body: {
-          priceId,
-          customerId: user.id,
-          paymentType,
-        },
-      });
-
-      if (response.error) throw new Error(response.error.message);
-      
-      const { clientSecret } = response.data;
-
-      // Confirm the payment
-      const { error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: {
-            // You would typically use stripe.elements() here
-            // This is just for demonstration
-            token: 'tok_visa', // Test token
-          },
-        },
-      });
-
-      if (stripeError) {
-        throw new Error(stripeError.message);
-      }
-
-      // Payment successful
-      setPaymentStatus(PaymentStatus.PAID);
-      toast({
-        title: "Payment successful",
-        description: "Thank you for your purchase!",
-      });
-
-    } catch (error: any) {
-      console.error("Payment error:", error);
-      setPaymentStatus(PaymentStatus.NOT_PAID);
-      setSelectedPlan(null);
-      toast({
-        title: "Payment failed",
-        description: error.message || "Please try again or contact support.",
-        variant: "destructive",
-      });
-    }
+    
+    setSelectedPlan(plan);
   };
 
-  const handleDownload = () => {
-    onDownload();
-    setOpen(false);
+  const goBackToPlans = () => {
+    setSelectedPlan(null);
   };
 
   return (
@@ -168,7 +269,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-1 gap-4">
                 <Button 
-                  onClick={() => handlePayment('one_time')}
+                  onClick={() => selectPlan('one_time')}
                   className="w-full justify-between"
                   variant="outline"
                 >
@@ -183,7 +284,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
                 </Button>
                 
                 <Button 
-                  onClick={() => handlePayment('subscription')}
+                  onClick={() => selectPlan('subscription')}
                   className="w-full justify-between"
                 >
                   <div className="flex flex-col items-start">
@@ -207,14 +308,37 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           </>
         )}
         
-        {paymentStatus === PaymentStatus.PROCESSING && (
-          <div className="py-6 flex flex-col items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <h3 className="mt-4 text-lg font-medium">Processing Payment...</h3>
-            <p className="text-sm text-muted-foreground mt-2">
-              Please wait while we process your payment.
-            </p>
-          </div>
+        {paymentStatus === PaymentStatus.NOT_PAID && selectedPlan && (
+          <>
+            <DialogHeader>
+              <DialogTitle>
+                {selectedPlan === 'one_time' ? 'One-time Purchase' : 'Monthly Subscription'}
+              </DialogTitle>
+              <DialogDescription>
+                Enter your payment details to complete your purchase.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Elements stripe={stripePromise}>
+                <CheckoutForm 
+                  priceId={selectedPlan === 'one_time' ? ONE_TIME_PRICE_ID : SUBSCRIPTION_PRICE_ID}
+                  paymentType={selectedPlan}
+                  onPaymentSuccess={handlePaymentSuccess}
+                  onPaymentError={handlePaymentError}
+                />
+              </Elements>
+            </div>
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={goBackToPlans}
+                className="mr-auto"
+              >
+                Back to plans
+              </Button>
+            </DialogFooter>
+          </>
         )}
         
         {paymentStatus === PaymentStatus.PAID && (
