@@ -24,7 +24,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 
 // Initialize Stripe with the publishable key for client-side operations
-const stripePromise = loadStripe('pk_test_51JmBHWIN4GhAoTF7hxK1ePDvtzAhTvzJbbV5JtZhHWGhkbcNeRSpQJ4TAXjDpTzS6TnQK4WPFl0HUvvSgWEGyNHs00ZsCbJCwJ');
+// Use the betas flag as specified in the documentation
+const stripePromise = loadStripe("pk_test_51JmBHWIN4GhAoTF7hxK1ePDvtzAhTvzJbbV5JtZhHWGhkbcNeRSpQJ4TAXjDpTzS6TnQK4WPFl0HUvvSgWEGyNHs00ZsCbJCwJ", {
+  betas: ['custom_checkout_beta_5'],
+});
 
 interface PaywallDialogProps {
   onDownload: () => void;
@@ -73,6 +76,7 @@ function CheckoutForm({
           priceId,
           customerId: user.id,
           paymentType,
+          email: user.email,
         },
       });
 

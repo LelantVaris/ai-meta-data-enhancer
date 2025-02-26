@@ -16,18 +16,19 @@ serve(async (req) => {
   }
   
   try {
-    // Use the server-side secret key - this is correct for server-side operations
+    // Use the server-side secret key with beta flag as specified in the docs
     const stripeSecretKey = "sk_test_51JmBHWIN4GhAoTF7hdVq57mDhlotp7NC9OgvtvrobJ3r4G6dc6pqzx8zgBMIEVCm0yWHfZG1oDzxKSagoxkfrddo00viiZiach";
     
+    // Initialize Stripe with the beta flag
     const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: "2023-10-16",
+      apiVersion: "2020-08-27; custom_checkout_beta=v1" as any,
     });
 
     // Get request body
     const requestData = await req.json();
-    const { priceId, customerId, paymentType } = requestData;
+    const { priceId, customerId, paymentType, email } = requestData;
 
-    console.log("Request data:", { priceId, customerId, paymentType });
+    console.log("Request data:", { priceId, customerId, paymentType, email });
 
     if (!priceId || !customerId) {
       return new Response(
@@ -45,15 +46,17 @@ serve(async (req) => {
     
     console.log("Creating payment intent:", { amount, currency, customerId });
 
-    // Create a payment intent
+    // Create a payment intent with additional params
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency,
+      receipt_email: email,
       metadata: {
         priceId,
         paymentType,
         customerId,
       },
+      // Add any specific beta parameters here if needed
     });
 
     console.log("Payment intent created:", paymentIntent.id);
