@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download, CreditCard } from "lucide-react";
 import { loadStripe, StripeCardElement } from "@stripe/stripe-js";
@@ -23,8 +22,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 
-// Initialize Stripe with the publishable key for client-side operations
-// Use the betas flag as specified in the documentation
 const stripePromise = loadStripe("pk_test_51JmBHWIN4GhAoTF7YlfJXFezdVSTbwnJLV7S8BSrFxAg1309b64GYzHikSVUTUWxOCnwHPAA1O1pOEECN2bah6k900qPP6IPnj", {
   betas: ['custom_checkout_beta_5'],
 });
@@ -70,7 +67,6 @@ function CheckoutForm({
     try {
       console.log("Creating payment intent with data:", { priceId, customerId: user.id, paymentType });
       
-      // Step 1: Create payment intent via our edge function
       const response = await supabase.functions.invoke('create-payment-intent', {
         body: {
           priceId,
@@ -88,7 +84,6 @@ function CheckoutForm({
       const { clientSecret } = response.data;
       console.log("Received client secret, confirming payment...");
 
-      // Step 2: Confirm the payment with Stripe.js
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement) as StripeCardElement,
@@ -106,7 +101,6 @@ function CheckoutForm({
       console.log("Payment confirmed with status:", paymentIntent.status);
 
       if (paymentIntent.status === 'succeeded') {
-        // Step 3: Update user record in database based on payment type
         if (paymentType === 'subscription') {
           console.log("Subscription payment succeeded, updating subscription status");
           const { error: dbError } = await supabase
@@ -122,13 +116,12 @@ function CheckoutForm({
             // Continue anyway since payment was successful
           }
         } else {
-          // For one-time payments, we'll mark the transaction but not as an active subscription
           console.log("One-time payment succeeded, recording transaction");
           const { error: dbError } = await supabase
             .from('user_subscriptions')
             .upsert({
               user_id: user.id,
-              subscription_status: 'completed',  // Not 'active' for one-time purchases
+              subscription_status: 'completed',
               subscription_type: 'one_time',
             }, { onConflict: 'user_id' });
 
@@ -165,7 +158,7 @@ function CheckoutForm({
         color: '#9e2146',
       },
     },
-    hidePostalCode: true, // This removes the ZIP code field
+    hidePostalCode: true,
   };
 
   return (
@@ -212,12 +205,10 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Test mode Stripe product IDs
   const ONE_TIME_PRICE_ID = 'price_1Qwne7IN4GhAoTF7Ru6kQ8mq';
   const SUBSCRIPTION_PRICE_ID = 'price_1QwndqIN4GhAoTF7gUxlTCFx';
 
   useEffect(() => {
-    // Reset payment status and selected plan when dialog opens/closes
     if (!open) {
       setSelectedPlan(null);
       setCurrentTransaction(null);
@@ -226,7 +217,6 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     }
   }, [open]);
 
-  // Check if user has active subscription
   const checkSubscriptionStatus = async () => {
     if (!user) {
       setPaymentStatus(PaymentStatus.NOT_PAID);
@@ -256,7 +246,6 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       } else if (data.subscription_type === 'subscription' && data.subscription_status === 'active') {
         console.log("User has active subscription");
         setPaymentStatus(PaymentStatus.SUBSCRIPTION_ACTIVE);
-        // If they have an active subscription, immediately download without showing modal
         if (open) {
           handleDownload();
         }
@@ -326,17 +315,6 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setSelectedPlan(null);
   };
 
-  // Handle dialog trigger click
-  const handleDialogTrigger = () => {
-    // If user has an active subscription, download immediately without showing dialog
-    if (paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE) {
-      onDownload();
-      return false; // Prevent dialog from opening
-    }
-    return true; // Allow dialog to open
-  };
-
-  // If user has active subscription, we don't need to show the dialog at all
   if (paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE) {
     return (
       <span onClick={onDownload}>
@@ -347,7 +325,6 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
 
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
-      // If trying to open the dialog but user has subscription, download instead
       if (newOpen && paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE) {
         onDownload();
       } else {
@@ -408,7 +385,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           </>
         )}
         
-        {(paymentStatus === PaymentStatus.NOT_PAID || paymentStatus === PaymentStatus.ONE_TIME_PAID) && selectedPlan && (
+        {selectedPlan && paymentStatus !== PaymentStatus.SUBSCRIPTION_ACTIVE && (
           <>
             <DialogHeader>
               <DialogTitle>
