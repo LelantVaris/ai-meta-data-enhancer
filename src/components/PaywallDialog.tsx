@@ -138,27 +138,24 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session) {
-      // Use type assertion to work around TypeScript errors
-      const { data: subscriptions } = await supabase
-        .from('subscriptions' as any)
-        .select('*')
-        .eq('user_id', session.user.id)
-        .eq('status', 'active');
-      
-      if (subscriptions && subscriptions.length > 0) {
+      // Use a raw query to avoid TypeScript errors
+      const { data: subscriptions, error: subError } = await supabase
+        .rpc('check_user_subscription', { user_id_param: session.user.id })
+        .catch(() => ({ data: null, error: { message: 'Error checking subscription' } }));
+        
+      if (subscriptions && subscriptions > 0) {
         // User has an active subscription
         setPaymentStatus(PaymentStatus.PAID);
-      } else {
-        // Check if user has made a one-time purchase
-        const { data: purchases } = await supabase
-          .from('purchases' as any)
-          .select('*')
-          .eq('user_id', session.user.id)
-          .eq('status', 'succeeded');
+        return;
+      }
+      
+      // Check for one-time purchases
+      const { data: purchases, error: purchaseError } = await supabase
+        .rpc('check_user_purchase', { user_id_param: session.user.id })
+        .catch(() => ({ data: null, error: { message: 'Error checking purchase' } }));
         
-        if (purchases && purchases.length > 0) {
-          setPaymentStatus(PaymentStatus.PAID);
-        }
+      if (purchases && purchases > 0) {
+        setPaymentStatus(PaymentStatus.PAID);
       }
     }
   };
