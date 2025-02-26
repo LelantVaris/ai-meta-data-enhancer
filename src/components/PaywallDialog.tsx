@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { ArrowRight, Check, Download, CreditCard, Mail, User, Lock, ArrowLeft } from "lucide-react";
+import { ArrowRight, Check, Download, CreditCard, Mail, Lock, ArrowLeft } from "lucide-react";
 import { loadStripe, StripeCardElement } from "@stripe/stripe-js";
 import {
   Elements,
@@ -10,14 +10,21 @@ import {
 } from "@stripe/react-stripe-js";
 import {
   Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+  InnerDialog,
+  InnerDialogTrigger,
+  InnerDialogContent,
+  InnerDialogHeader,
+  InnerDialogFooter,
+  InnerDialogTitle,
+  InnerDialogDescription,
+} from "@/components/ui/nested-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -211,14 +218,12 @@ function CheckoutForm({
   );
 }
 
-type DialogStep = 'auth' | 'signin' | 'signup' | 'plans' | 'payment' | 'success';
-
 export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProps) {
   const [open, setOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.NOT_PAID);
   const [selectedPlan, setSelectedPlan] = useState<'one_time' | 'subscription' | null>(null);
   const [currentTransaction, setCurrentTransaction] = useState<'one_time' | 'subscription' | null>(null);
-  const [currentStep, setCurrentStep] = useState<DialogStep>('plans');
+  const [showSuccess, setShowSuccess] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -227,6 +232,8 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const [password, setPassword] = useState("");
   const [isAuthProcessing, setIsAuthProcessing] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
 
   const ONE_TIME_PRICE_ID = 'price_1Qwne7IN4GhAoTF7Ru6kQ8mq';
   const SUBSCRIPTION_PRICE_ID = 'price_1QwndqIN4GhAoTF7gUxlTCFx';
@@ -235,32 +242,17 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     if (!open) {
       setSelectedPlan(null);
       setCurrentTransaction(null);
-      // Reset to initial step based on user auth state
-      resetDialogState();
+      setShowSuccess(false);
+      setShowAuthDialog(false);
+      // Reset auth form
+      setEmail("");
+      setPassword("");
+      setAuthError(null);
+      setIsAuthProcessing(false);
     } else {
       checkSubscriptionStatus();
     }
-  }, [open, user]);
-
-  const resetDialogState = () => {
-    // Reset auth form
-    setEmail("");
-    setPassword("");
-    setAuthError(null);
-    setIsAuthProcessing(false);
-    
-    // Set initial step based on user auth state
-    if (!user) {
-      setCurrentStep('auth');
-    } else {
-      // If user has active subscription, go to success directly
-      if (paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE) {
-        setCurrentStep('success');
-      } else {
-        setCurrentStep('plans');
-      }
-    }
-  };
+  }, [open]);
 
   const checkSubscriptionStatus = async () => {
     if (!user) {
@@ -293,7 +285,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
         console.log("User has active subscription");
         setPaymentStatus(PaymentStatus.SUBSCRIPTION_ACTIVE);
         // Only auto-download if not a new subscription (success screen already showing)
-        if (open && !currentTransaction) {
+        if (open && !currentTransaction && !showSuccess) {
           handleDownload();
         }
       } else if (data.subscription_type === 'one_time' && data.subscription_status === 'completed') {
@@ -318,13 +310,6 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     }
   }, [user]);
 
-  // Also check when dialog opens
-  useEffect(() => {
-    if (open && user) {
-      checkSubscriptionStatus();
-    }
-  }, [open]);
-
   const handlePaymentSuccess = (paymentType: 'one_time' | 'subscription') => {
     if (paymentType === 'subscription') {
       setPaymentStatus(PaymentStatus.SUBSCRIPTION_ACTIVE);
@@ -333,7 +318,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     }
     
     setCurrentTransaction(paymentType);
-    setCurrentStep('success');
+    setShowSuccess(true);
     
     toast({
       title: "Payment successful",
@@ -349,7 +334,6 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   };
 
   const handlePaymentError = (error: Error) => {
-    setSelectedPlan(null);
     toast({
       title: "Payment failed",
       description: error.message || "Please try again or contact support.",
@@ -363,25 +347,11 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   };
 
   const selectPlan = (plan: 'one_time' | 'subscription') => {
-    if (!user) {
-      setCurrentStep('auth');
-      return;
-    }
-    
     setSelectedPlan(plan);
-    setCurrentStep('payment');
-  };
-
-  const goBackToPlans = () => {
-    setSelectedPlan(null);
-    setCurrentStep('plans');
-  };
-
-  const goBackToAuth = () => {
-    setCurrentStep('auth');
-    setEmail("");
-    setPassword("");
-    setAuthError(null);
+    
+    if (!user) {
+      setShowAuthDialog(true);
+    }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -402,7 +372,8 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
         description: "You have successfully signed in.",
       });
       
-      // Will automatically move to plans via useEffect
+      setShowAuthDialog(false);
+      
     } catch (error: any) {
       console.error("Sign in error:", error);
       setAuthError(error.message);
@@ -426,11 +397,11 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       
       toast({
         title: "Account created",
-        description: "Check your email to confirm your account.",
+        description: "Check your email to confirm your account, but you can proceed with payment now.",
       });
       
-      // Go to signin after signup
-      setCurrentStep('signin');
+      setShowAuthDialog(false);
+      
     } catch (error: any) {
       console.error("Sign up error:", error);
       setAuthError(error.message);
@@ -456,228 +427,23 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
         return; // Don't open dialog
       }
       setOpen(newOpen);
-      if (newOpen) {
-        resetDialogState();
-      }
     }}>
       <DialogTrigger asChild>
         {trigger || <Button>Open Paywall</Button>}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        {/* Auth selection screen */}
-        {currentStep === 'auth' && (
+      
+      <DialogContent className="p-0 sm:max-w-[450px]">
+        {/* Plan Selection */}
+        {!showSuccess && (
           <>
-            <DialogHeader>
-              <DialogTitle>Sign in or create an account</DialogTitle>
-              <DialogDescription>
-                You need an account to continue with your purchase.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <Button 
-                onClick={() => setCurrentStep('signin')}
-                className="w-full justify-between"
-              >
-                <div className="flex flex-col items-start">
-                  <span className="font-medium">Sign In</span>
-                  <span className="text-xs text-muted-foreground">Already have an account</span>
-                </div>
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-              
-              <Button 
-                onClick={() => setCurrentStep('signup')}
-                variant="outline"
-                className="w-full justify-between"
-              >
-                <div className="flex flex-col items-start">
-                  <span className="font-medium">Create Account</span>
-                  <span className="text-xs text-muted-foreground">New to our service</span>
-                </div>
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="ghost">
-                  Cancel
-                </Button>
-              </DialogClose>
-            </DialogFooter>
-          </>
-        )}
-        
-        {/* Sign In form */}
-        {currentStep === 'signin' && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Sign In</DialogTitle>
-              <DialogDescription>
-                Enter your credentials to access your account
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSignIn} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-              
-              {authError && (
-                <div className="text-red-500 text-sm">{authError}</div>
-              )}
-              
-              <Button type="submit" className="w-full" disabled={isAuthProcessing}>
-                {isAuthProcessing ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                    Signing in...
-                  </>
-                ) : (
-                  "Sign In"
-                )}
-              </Button>
-            </form>
-            <DialogFooter className="flex flex-col-reverse sm:flex-row justify-between sm:justify-end items-center">
-              <Button type="button" variant="ghost" onClick={goBackToAuth} className="mt-2 sm:mt-0">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-              <div className="text-sm">
-                Don't have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep('signup')}
-                  className="text-primary font-medium hover:underline"
-                >
-                  Create one
-                </button>
-              </div>
-            </DialogFooter>
-          </>
-        )}
-        
-        {/* Sign Up form */}
-        {currentStep === 'signup' && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Create Account</DialogTitle>
-              <DialogDescription>
-                Create a new account to get started
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSignUp} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="pl-10"
-                    required
-                    minLength={6}
-                  />
-                </div>
-              </div>
-              
-              {authError && (
-                <div className="text-red-500 text-sm">{authError}</div>
-              )}
-              
-              <Button type="submit" className="w-full" disabled={isAuthProcessing}>
-                {isAuthProcessing ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                    Creating account...
-                  </>
-                ) : (
-                  "Create Account"
-                )}
-              </Button>
-            </form>
-            <DialogFooter className="flex flex-col-reverse sm:flex-row justify-between sm:justify-end items-center">
-              <Button type="button" variant="ghost" onClick={goBackToAuth} className="mt-2 sm:mt-0">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-              <div className="text-sm">
-                Already have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep('signin')}
-                  className="text-primary font-medium hover:underline"
-                >
-                  Sign in
-                </button>
-              </div>
-            </DialogFooter>
-          </>
-        )}
-        
-        {/* Initial plan selection */}
-        {currentStep === 'plans' && (
-          <>
-            <DialogHeader>
+            <DialogHeader className="border-b p-4">
               <DialogTitle>Download CSV</DialogTitle>
               <DialogDescription>
                 Choose a payment option to download the enhanced meta data.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            
+            <div className="p-4">
               <div className="grid grid-cols-1 gap-4">
                 <Button 
                   onClick={() => selectPlan('one_time')}
@@ -709,7 +475,8 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
                 </Button>
               </div>
             </div>
-            <DialogFooter>
+            
+            <DialogFooter className="border-t p-4">
               <DialogClose asChild>
                 <Button type="button" variant="ghost">
                   Cancel
@@ -719,72 +486,36 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           </>
         )}
         
-        {/* Payment form */}
-        {currentStep === 'payment' && selectedPlan && (
+        {/* Success View */}
+        {showSuccess && (
           <>
-            <DialogHeader>
-              <DialogTitle>
-                {selectedPlan === 'one_time' ? 'One-time Purchase' : 'Monthly Subscription'}
-              </DialogTitle>
-              <DialogDescription>
-                Enter your payment details to complete your purchase.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <Elements stripe={stripePromise}>
-                <CheckoutForm 
-                  priceId={selectedPlan === 'one_time' ? ONE_TIME_PRICE_ID : SUBSCRIPTION_PRICE_ID}
-                  paymentType={selectedPlan}
-                  onPaymentSuccess={handlePaymentSuccess}
-                  onPaymentError={handlePaymentError}
-                />
-              </Elements>
-            </div>
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                onClick={goBackToPlans}
-                className="mr-auto"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to plans
-              </Button>
-            </DialogFooter>
-          </>
-        )}
-        
-        {/* Success message */}
-        {currentStep === 'success' && (
-          <>
-            <DialogHeader>
+            <DialogHeader className="border-b p-4">
               <DialogTitle>Thank You!</DialogTitle>
               <DialogDescription>
                 Your payment was successful. You can now download the enhanced meta data.
               </DialogDescription>
             </DialogHeader>
-            <div className="py-6 flex flex-col items-center justify-center">
-              <div className="bg-green-100 rounded-full p-2">
+            
+            <div className="flex flex-col items-center justify-center p-6 space-y-4">
+              <div className="bg-green-100 rounded-full p-3">
                 <Check className="h-8 w-8 text-green-600" />
               </div>
-              <h3 className="mt-4 text-lg font-medium">Payment Successful</h3>
+              <h3 className="text-xl font-medium">Payment Successful</h3>
+              
               {currentTransaction === 'subscription' && (
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="text-center text-sm text-muted-foreground">
                   Your subscription is now active. You can download any files without additional payments.
                 </p>
               )}
+              
               {currentTransaction === 'one_time' && (
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="text-center text-sm text-muted-foreground">
                   Your one-time purchase is complete. This allows you to download this file only.
                 </p>
               )}
-              {!currentTransaction && paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Your subscription is active. You can download any files without additional payments.
-                </p>
-              )}
             </div>
-            <DialogFooter>
+            
+            <DialogFooter className="border-t p-4">
               <Button onClick={handleDownload} className="w-full">
                 <Download className="mr-2 h-4 w-4" />
                 Download CSV
@@ -792,6 +523,138 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
             </DialogFooter>
           </>
         )}
+        
+        {/* Authentication Inner Dialog */}
+        <InnerDialog>
+          {showAuthDialog && (
+            <InnerDialogContent className="sm:max-w-[400px] p-0">
+              <InnerDialogHeader className="border-b p-4">
+                <InnerDialogTitle>{authMode === 'signin' ? 'Sign In' : 'Create Account'}</InnerDialogTitle>
+                <InnerDialogDescription>
+                  {authMode === 'signin' 
+                    ? 'Enter your credentials to access your account' 
+                    : 'Create a new account to continue with your purchase'}
+                </InnerDialogDescription>
+              </InnerDialogHeader>
+              
+              <div className="p-4">
+                <form onSubmit={authMode === 'signin' ? handleSignIn : handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="email" className="text-sm font-medium">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="password" className="text-sm font-medium">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="pl-10"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  
+                  {authError && (
+                    <div className="text-red-500 text-sm">{authError}</div>
+                  )}
+                  
+                  <Button type="submit" className="w-full" disabled={isAuthProcessing}>
+                    {isAuthProcessing ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        {authMode === 'signin' ? 'Signing in...' : 'Creating account...'}
+                      </>
+                    ) : (
+                      <>{authMode === 'signin' ? 'Sign In' : 'Create Account'}</>
+                    )}
+                  </Button>
+                </form>
+                
+                <div className="mt-4 text-center text-sm">
+                  {authMode === 'signin' ? "Don't have an account?" : "Already have an account?"}
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+                    className="ml-1 font-medium text-primary hover:underline"
+                  >
+                    {authMode === 'signin' ? "Create one" : "Sign in"}
+                  </button>
+                </div>
+              </div>
+              
+              <InnerDialogFooter className="border-t p-4">
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  onClick={() => setShowAuthDialog(false)}
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
+              </InnerDialogFooter>
+            </InnerDialogContent>
+          )}
+        </InnerDialog>
+        
+        {/* Payment Inner Dialog */}
+        <InnerDialog>
+          {selectedPlan && user && !showSuccess && (
+            <InnerDialogContent className="sm:max-w-[400px] p-0" position="top">
+              <InnerDialogHeader className="border-b p-4">
+                <InnerDialogTitle>
+                  {selectedPlan === 'one_time' ? 'One-time Purchase' : 'Monthly Subscription'}
+                </InnerDialogTitle>
+                <InnerDialogDescription>
+                  Enter your payment details to complete your purchase.
+                </InnerDialogDescription>
+              </InnerDialogHeader>
+              
+              <div className="p-4">
+                <Elements stripe={stripePromise}>
+                  <CheckoutForm 
+                    priceId={selectedPlan === 'one_time' ? ONE_TIME_PRICE_ID : SUBSCRIPTION_PRICE_ID}
+                    paymentType={selectedPlan}
+                    onPaymentSuccess={handlePaymentSuccess}
+                    onPaymentError={handlePaymentError}
+                  />
+                </Elements>
+              </div>
+              
+              <InnerDialogFooter className="border-t p-4">
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  onClick={() => setSelectedPlan(null)}
+                  className="w-full"
+                >
+                  Back
+                </Button>
+              </InnerDialogFooter>
+            </InnerDialogContent>
+          )}
+        </InnerDialog>
       </DialogContent>
     </Dialog>
   );
