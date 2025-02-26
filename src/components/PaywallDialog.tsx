@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download } from "lucide-react";
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
 
 interface PaywallDialogProps {
   onDownload: () => void;
@@ -30,6 +31,32 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const [open, setOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.NOT_PAID);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Check if the user is authenticated
+  useEffect(() => {
+    if (open) {
+      if (user) {
+        // Get user metadata
+        const metadata = user.user_metadata;
+        
+        // Check if user has paid status in metadata
+        // This assumes you're storing payment status in user metadata
+        // which is a common approach for simple payment systems
+        if (metadata && metadata.paid_user) {
+          setPaymentStatus(PaymentStatus.PAID);
+        } else {
+          setPaymentStatus(PaymentStatus.NOT_PAID);
+        }
+        
+        console.log("User authenticated:", user.id);
+        console.log("User metadata:", metadata);
+      } else {
+        setPaymentStatus(PaymentStatus.NOT_PAID);
+        console.log("User not authenticated");
+      }
+    }
+  }, [open, user]);
 
   const handleOneTimePayment = async () => {
     setPaymentStatus(PaymentStatus.PROCESSING);
@@ -116,31 +143,8 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setOpen(false);
   };
 
-  // Simplified function to check payment status
-  // In the future, we'll implement database queries once tables are properly created
-  const checkUserSubscription = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session) {
-      console.log("Logged in user:", session.user.id);
-      // For now, we'll simulate an unpaid status
-      // In the future, we'll query the database for subscriptions and purchases
-      setPaymentStatus(PaymentStatus.NOT_PAID);
-    }
-  };
-
-  // Mock for successful payment for demo purposes
-  const simulateSuccessfulPayment = () => {
-    setPaymentStatus(PaymentStatus.PAID);
-  };
-
   return (
-    <Dialog open={open} onOpenChange={(newOpen) => {
-      setOpen(newOpen);
-      if (newOpen) {
-        checkUserSubscription();
-      }
-    }}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || <Button>Open Paywall</Button>}
       </DialogTrigger>
@@ -182,15 +186,6 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
                     <span className="font-bold">$3.99/mo</span>
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </div>
-                </Button>
-                
-                {/* Demo button for testing - Remove in production */}
-                <Button 
-                  onClick={simulateSuccessfulPayment}
-                  variant="secondary"
-                  className="w-full mt-4"
-                >
-                  Demo: Simulate Successful Payment
                 </Button>
               </div>
             </div>
