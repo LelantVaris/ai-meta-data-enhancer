@@ -16,7 +16,7 @@ serve(async (req) => {
   }
   
   try {
-    // Use the provided secret key directly - this is the server-side secret key
+    // Use the server-side secret key
     const stripeSecretKey = "sk_test_51JmBHWIN4GhAoTF7hdVq57mDhlotp7NC9OgvtvrobJ3r4G6dc6pqzx8zgBMIEVCm0yWHfZG1oDzxKSagoxkfrddo00viiZiach";
     
     const stripe = new Stripe(stripeSecretKey, {
@@ -40,13 +40,12 @@ serve(async (req) => {
     }
 
     // For testing purposes, we're using hardcoded amounts
-    // In production, you would retrieve the actual price from Stripe
     const amount = paymentType === 'one_time' ? 99 : 399; // $0.99 or $3.99
     const currency = 'usd';
     
     console.log("Creating payment intent:", { amount, currency, customerId });
 
-    // Create a payment intent
+    // Create a payment intent with the Stripe SDK
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency,
@@ -59,6 +58,7 @@ serve(async (req) => {
 
     console.log("Payment intent created:", paymentIntent.id);
 
+    // Return the client secret to the client
     return new Response(
       JSON.stringify({
         clientSecret: paymentIntent.client_secret,

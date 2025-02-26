@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download, CreditCard } from "lucide-react";
-import { loadStripe, Stripe, StripeCardElement } from "@stripe/stripe-js";
+import { loadStripe, StripeCardElement } from "@stripe/stripe-js";
 import {
   Elements,
   CardElement,
@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 
-// Initialize Stripe with the public key - this is the client-side publishable key
+// Initialize Stripe with the public key
 const stripePromise = loadStripe('pk_test_51JmBHWIN4GhAoTF7hxK1ePDvtzAhTvzJbbV5JtZhHWGhkbcNeRSpQJ4TAXjDpTzS6TnQK4WPFl0HUvvSgWEGyNHs00ZsCbJCwJ');
 
 interface PaywallDialogProps {
@@ -65,7 +65,9 @@ function CheckoutForm({
     setErrorMessage(null);
 
     try {
-      // Create payment intent using server-side function which has the secret key
+      console.log("Creating payment intent with data:", { priceId, customerId: user.id, paymentType });
+      
+      // Step 1: Create payment intent via our edge function
       const response = await supabase.functions.invoke('create-payment-intent', {
         body: {
           priceId,
@@ -74,11 +76,15 @@ function CheckoutForm({
         },
       });
 
-      if (response.error) throw new Error(response.error.message);
+      if (response.error) {
+        console.error("Error from edge function:", response.error);
+        throw new Error(response.error.message);
+      }
       
       const { clientSecret } = response.data;
+      console.log("Received client secret, confirming payment...");
 
-      // Confirm the payment with the client-side publishable key (via stripePromise)
+      // Step 2: Confirm the payment with Stripe.js
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement) as StripeCardElement,
@@ -89,11 +95,15 @@ function CheckoutForm({
       });
 
       if (stripeError) {
+        console.error("Stripe error during confirmation:", stripeError);
         throw new Error(stripeError.message || 'Payment failed');
       }
+      
+      console.log("Payment confirmed with status:", paymentIntent.status);
 
       if (paymentIntent.status === 'succeeded') {
-        // Update subscription in database
+        // Step 3: Update subscription in database
+        console.log("Payment succeeded, updating subscription in database");
         const { error: dbError } = await supabase
           .from('user_subscriptions')
           .upsert({
@@ -104,10 +114,12 @@ function CheckoutForm({
 
         if (dbError) {
           console.error("Error updating subscription:", dbError);
+          // Continue anyway since payment was successful
         }
 
         onPaymentSuccess();
       } else {
+        console.error("Payment status not successful:", paymentIntent.status);
         throw new Error('Payment processing failed');
       }
     } catch (error: any) {
@@ -187,7 +199,8 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       if (!open || !user) return;
       
       try {
-        // Fixed query: Using maybeSingle instead of single to handle no results case
+        console.log("Checking subscription status for user:", user.id);
+        // Use maybeSingle to handle case when no subscription exists
         const { data, error } = await supabase
           .from('user_subscriptions')
           .select('subscription_status, subscription_type')
@@ -200,9 +213,13 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           return;
         }
         
+        console.log("Subscription data:", data);
+        
         if (data && data.subscription_status === 'active') {
+          console.log("User has active subscription");
           setPaymentStatus(PaymentStatus.PAID);
         } else {
+          console.log("User has no active subscription");
           setPaymentStatus(PaymentStatus.NOT_PAID);
         }
       } catch (error) {
