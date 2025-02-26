@@ -4,19 +4,9 @@ import { ColumnDetectionResult, MetaData } from "./types";
 const MAX_TITLE_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 160;
 
-// System prompts for AI enhancement
-const TITLE_SYSTEM_PROMPT = 
-  `You are an expert SEO specialist. Optimize the given meta title to be compelling, concise, and under ${MAX_TITLE_LENGTH} characters. 
-   Include important keywords, maintain clarity, and ensure it accurately represents the content.
-   Do not use quotation marks in your output.`;
-
-const DESCRIPTION_SYSTEM_PROMPT = 
-  `You are an expert SEO specialist. Optimize the given meta description to be informative, engaging, and under ${MAX_DESCRIPTION_LENGTH} characters. 
-   Include a clear value proposition, relevant keywords, and a subtle call to action when appropriate.
-   Do not use quotation marks in your output.`;
-
-export function enhanceMeta(data: MetaData[]): MetaData[] {
-  return data.map(item => {
+export function enhanceMeta(data: MetaData[]): Promise<MetaData[]> {
+  // First, handle any missing fields using the rule-based approach
+  const preparedData = data.map(item => {
     let originalTitle = item.original_title;
     let originalDescription = item.original_description;
     
@@ -29,18 +19,87 @@ export function enhanceMeta(data: MetaData[]): MetaData[] {
       originalDescription = inferDescriptionFromTitle(originalTitle);
     }
     
-    // Process with AI-like optimization
-    const enhancedTitle = enhanceWithAISimulation(originalTitle, true);
-    const enhancedDescription = enhanceWithAISimulation(originalDescription, false);
-    
     return {
       ...item,
       original_title: originalTitle || '',
       original_description: originalDescription || '',
-      enhanced_title: enhancedTitle,
-      enhanced_description: enhancedDescription
+      enhanced_title: '',
+      enhanced_description: ''
     };
   });
+
+  // Then, enhance the data using either rule-based or AI-based approach
+  return enhanceDataWithAI(preparedData);
+}
+
+async function enhanceDataWithAI(data: MetaData[]): Promise<MetaData[]> {
+  const enhancedData: MetaData[] = [];
+  
+  for (const item of data) {
+    // Enhanced title - rule-based if within limits, AI-based if not
+    let enhancedTitle: string;
+    if (!item.original_title || item.original_title.length <= MAX_TITLE_LENGTH) {
+      enhancedTitle = optimizeTitle(item.original_title);
+    } else {
+      try {
+        enhancedTitle = await enhanceWithAI(item.original_title, true, MAX_TITLE_LENGTH);
+      } catch (error) {
+        console.error("Error enhancing title with AI, falling back to rule-based:", error);
+        enhancedTitle = optimizeTitle(item.original_title);
+      }
+    }
+    
+    // Enhanced description - rule-based if within limits, AI-based if not
+    let enhancedDescription: string;
+    if (!item.original_description || item.original_description.length <= MAX_DESCRIPTION_LENGTH) {
+      enhancedDescription = optimizeDescription(item.original_description);
+    } else {
+      try {
+        enhancedDescription = await enhanceWithAI(item.original_description, false, MAX_DESCRIPTION_LENGTH);
+      } catch (error) {
+        console.error("Error enhancing description with AI, falling back to rule-based:", error);
+        enhancedDescription = optimizeDescription(item.original_description);
+      }
+    }
+    
+    enhancedData.push({
+      ...item,
+      enhanced_title: enhancedTitle,
+      enhanced_description: enhancedDescription
+    });
+  }
+  
+  return enhancedData;
+}
+
+async function enhanceWithAI(text: string, isTitle: boolean, maxLength: number): Promise<string> {
+  if (!text) return '';
+  
+  try {
+    const response = await fetch('/api/enhance-meta', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        isTitle,
+        maxLength
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error enhancing with AI');
+    }
+    
+    const data = await response.json();
+    return data.enhancedText || '';
+  } catch (error) {
+    console.error('AI enhancement failed:', error);
+    // Fall back to rule-based enhancement
+    return isTitle ? optimizeTitle(text) : optimizeDescription(text);
+  }
 }
 
 function inferTitleFromDescription(description: string): string {
@@ -84,17 +143,6 @@ function inferDescriptionFromTitle(title: string): string {
   return inferredDescription.length > MAX_DESCRIPTION_LENGTH 
     ? inferredDescription.substring(0, MAX_DESCRIPTION_LENGTH - 3) + '...' 
     : inferredDescription;
-}
-
-function enhanceWithAISimulation(text: string, isTitle: boolean): string {
-  if (!text) return '';
-  
-  // Apply rule-based enhancement as a fallback
-  if (isTitle) {
-    return optimizeTitle(text);
-  } else {
-    return optimizeDescription(text);
-  }
 }
 
 function optimizeTitle(title: string): string {
@@ -151,7 +199,7 @@ function optimizeDescription(description: string): string {
   return optimized.substring(0, MAX_DESCRIPTION_LENGTH - 3) + '...';
 }
 
-// New function to detect meta title and description columns
+// Function to detect meta title and description columns
 export function detectMetaColumns(headers: string[]): ColumnDetectionResult {
   // Common patterns for title columns
   const titlePatterns = [

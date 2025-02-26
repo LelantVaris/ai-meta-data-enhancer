@@ -107,7 +107,7 @@ export const useMetaEnhancerLogic = () => {
     setIsProcessing(true);
     try {
       const data = await parseFile(file, titleColumnIndex, descriptionColumnIndex);
-      const enhanced = enhanceMeta(data);
+      const enhanced = await enhanceMeta(data);
       setEnhancedData(enhanced);
       setIsSuccess(true);
       toast({
