@@ -113,10 +113,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+    <div
       className="w-full bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden"
     >
       <div className="p-4 border-b border-neutral-100 flex justify-between items-center">
@@ -143,7 +140,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
           </TableHeader>
           <TableBody>
             {editableData.map((item, index) => (
-              <>
+              <React.Fragment key={`fragment-${index}`}>
                 {/* Title Row */}
                 <TableRow key={`title-${index}`} className="border-b border-neutral-100">
                   <TableCell className="align-top py-4">
@@ -179,4 +176,176 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
                         <Input
                           value={editableData[index].enhanced_title}
                           onChange={(e) => handleTextChange(index, 'enhanced_title', e.target.value)}
-                          className="w
+                          className="w-full text-sm border-violet-200 focus:border-violet-300"
+                          maxLength={60}
+                        />
+                      ) : (
+                        <div className={`text-sm p-2 rounded-md ${wasInferred(item.original_title) ? 'bg-violet-50/50 border border-violet-100' : ''}`}>
+                          {item.isLoading ? (
+                            <Skeleton className="w-full h-6" />
+                          ) : (
+                            editableData[index].enhanced_title
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right align-top py-4">
+                    <div className="flex justify-end gap-2">
+                      {editing[`enhanced_title-${index}`] ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSave(index, 'enhanced_title')}
+                          className="h-8 border-green-200 bg-green-50 hover:bg-green-100 text-green-600"
+                        >
+                          <Save className="h-3.5 w-3.5 mr-1.5" />
+                          Save
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(index, 'enhanced_title')}
+                          className="h-8 border-blue-200 hover:bg-blue-50 text-blue-600"
+                          disabled={item.isLoading}
+                        >
+                          <Edit className="h-3.5 w-3.5 mr-1.5" />
+                          Edit
+                        </Button>
+                      )}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => copyToClipboard(editableData[index].enhanced_title, 'title', index)}
+                              disabled={item.isLoading}
+                            >
+                              {copiedItems[`title-${index}`] ? (
+                                <Check className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <Copy className="h-4 w-4 text-neutral-500" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Copy title</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </TableCell>
+                </TableRow>
+                
+                {/* Description Row */}
+                <TableRow key={`desc-${index}`} className="border-b border-neutral-100 bg-neutral-50/30">
+                  <TableCell className="align-top py-4">
+                    <div>
+                      <Badge variant="outline" className="mb-1 text-xs font-normal bg-neutral-50 border-neutral-200">
+                        Description • {item.original_description.length} chars
+                      </Badge>
+                      {item.original_description ? (
+                        <p className="text-sm text-neutral-600">{item.original_description}</p>
+                      ) : (
+                        <p className="text-sm text-neutral-400 italic">No original description provided</p>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top py-4">
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs font-normal bg-neutral-50 border-neutral-200"
+                        >
+                          {editableData[index].enhanced_description.length} chars
+                        </Badge>
+                        {wasInferred(item.original_description) && (
+                          <Badge className="text-xs font-normal bg-violet-50 text-violet-700 border-violet-200 flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            <span>AI-Generated</span>
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {editing[`enhanced_description-${index}`] ? (
+                        <Textarea
+                          value={editableData[index].enhanced_description}
+                          onChange={(e) => handleTextChange(index, 'enhanced_description', e.target.value)}
+                          className="w-full text-sm border-violet-200 focus:border-violet-300"
+                          maxLength={160}
+                          rows={3}
+                        />
+                      ) : (
+                        <div className={`text-sm p-2 rounded-md ${wasInferred(item.original_description) ? 'bg-violet-50/50 border border-violet-100' : ''}`}>
+                          {item.isLoading ? (
+                            <Skeleton className="w-full h-16" />
+                          ) : (
+                            editableData[index].enhanced_description
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right align-top py-4">
+                    <div className="flex justify-end gap-2">
+                      {editing[`enhanced_description-${index}`] ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSave(index, 'enhanced_description')}
+                          className="h-8 border-green-200 bg-green-50 hover:bg-green-100 text-green-600"
+                        >
+                          <Save className="h-3.5 w-3.5 mr-1.5" />
+                          Save
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(index, 'enhanced_description')}
+                          className="h-8 border-blue-200 hover:bg-blue-50 text-blue-600"
+                          disabled={item.isLoading}
+                        >
+                          <Edit className="h-3.5 w-3.5 mr-1.5" />
+                          Edit
+                        </Button>
+                      )}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => copyToClipboard(editableData[index].enhanced_description, 'desc', index)}
+                              disabled={item.isLoading}
+                            >
+                              {copiedItems[`desc-${index}`] ? (
+                                <Check className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <Copy className="h-4 w-4 text-neutral-500" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Copy description</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              </React.Fragment>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
+
+export default MetaTable;
