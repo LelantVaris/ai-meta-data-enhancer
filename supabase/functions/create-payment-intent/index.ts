@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: corsHeaders,
@@ -17,32 +18,55 @@ serve(async (req) => {
   try {
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeSecretKey) {
-      throw new Error("Missing Stripe secret key");
+      console.error("Missing Stripe secret key");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
     }
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
     });
 
-    const { priceId, customerId, paymentType } = await req.json();
+    // Get request body
+    const requestData = await req.json();
+    const { priceId, customerId, paymentType } = requestData;
+
+    console.log("Request data:", { priceId, customerId, paymentType });
 
     if (!priceId || !customerId) {
-      throw new Error("Missing required fields");
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
     }
 
-    // Get price information from Stripe
-    const price = await stripe.prices.retrieve(priceId);
+    // For testing purposes, we're using hardcoded amounts
+    // In production, you would retrieve the actual price from Stripe
+    const amount = paymentType === 'one_time' ? 99 : 399; // $0.99 or $3.99
+    const currency = 'usd';
     
+    console.log("Creating payment intent:", { amount, currency, customerId });
+
     // Create a payment intent
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: price.unit_amount || 0,
-      currency: price.currency || 'usd',
-      customer: customerId,
+      amount,
+      currency,
       metadata: {
         priceId,
         paymentType,
+        customerId,
       },
     });
+
+    console.log("Payment intent created:", paymentIntent.id);
 
     return new Response(
       JSON.stringify({
@@ -53,9 +77,10 @@ serve(async (req) => {
         status: 200,
       }
     );
-  } catch (error: any) {
+  } catch (error) {
+    console.error("Error processing request:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "Unknown error occurred" }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,

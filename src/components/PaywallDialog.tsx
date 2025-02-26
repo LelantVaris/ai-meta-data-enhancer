@@ -186,11 +186,12 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       if (!open || !user) return;
       
       try {
+        // Fixed query: Using maybeSingle instead of single to handle no results case
         const { data, error } = await supabase
           .from('user_subscriptions')
           .select('subscription_status, subscription_type')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         
         if (error) {
           console.error("Error checking subscription status:", error);
