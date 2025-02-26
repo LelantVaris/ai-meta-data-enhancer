@@ -34,8 +34,8 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const { user } = useAuth();
 
   // Test mode Stripe product IDs
-  const ONE_TIME_PRICE_ID = 'price_1QwmgmIN4GhAoTF75P3B2Drd'; // Replace with your test price ID
-  const SUBSCRIPTION_PRICE_ID = 'price_1Qwmh1IN4GhAoTF78TJEw5Ek'; // Replace with your test price ID
+  const ONE_TIME_PRICE_ID = 'price_1Qwne7IN4GhAoTF7Ru6kQ8mq'; // One-time purchase ID
+  const SUBSCRIPTION_PRICE_ID = 'price_1QwndqIN4GhAoTF7gUxlTCFx'; // Subscription ID
 
   useEffect(() => {
     const checkSubscriptionStatus = async () => {
