@@ -15,8 +15,11 @@ serve(async (req) => {
   }
   
   try {
+    console.log("create-checkout-session: Function invoked");
+    
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeSecretKey) {
+      console.error("create-checkout-session: Missing Stripe secret key");
       throw new Error("Missing Stripe secret key");
     }
 
@@ -24,10 +27,21 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    const { price, quantity, mode, customerId, purchaseType = 'one_time' } = await req.json();
+    const requestData = await req.json();
+    const { price, quantity, mode, customerId, purchaseType = 'one_time' } = requestData;
     const origin = req.headers.get("origin");
+    
+    console.log("create-checkout-session: Request data:", {
+      price,
+      quantity, 
+      mode,
+      customerId,
+      purchaseType,
+      origin
+    });
 
     // Create checkout session
+    console.log("create-checkout-session: Creating checkout session");
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -45,6 +59,9 @@ serve(async (req) => {
         purchase_type: purchaseType,
       },
     });
+    
+    console.log("create-checkout-session: Session created with ID:", session.id);
+    console.log("create-checkout-session: Session URL:", session.url);
 
     return new Response(
       JSON.stringify({ url: session.url }),
@@ -54,7 +71,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error creating checkout session:", error);
+    console.error("create-checkout-session: Error creating session:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

@@ -25,8 +25,16 @@ const Index = () => {
       // Only handle payment status if it exists
       if (!paymentStatus) return;
       
+      console.log("Index: Processing payment status:", paymentStatus);
+      console.log("Index: Current localStorage items:", {
+        returnTo: localStorage.getItem('returnTo'),
+        shouldDownload: localStorage.getItem('shouldDownload')
+      });
+      
       try {
         if (paymentStatus === "success" && user) {
+          console.log("Index: Payment successful for user:", user.id);
+          
           // Create or update user subscription status
           const { error } = await supabase
             .from('user_subscriptions')
@@ -37,13 +45,14 @@ const Index = () => {
             }, { onConflict: 'user_id' });
           
           if (error) {
-            console.error("Error updating subscription status:", error);
+            console.error("Index: Error updating subscription status:", error);
             toast({
               title: "Payment successful",
               description: "But we couldn't update your account. Please contact support.",
               variant: "destructive",
             });
           } else {
+            console.log("Index: Successfully updated subscription status");
             toast({
               title: "Payment successful!",
               description: "Thank you for your purchase. You can now download CSV files anytime.",
@@ -51,11 +60,17 @@ const Index = () => {
             
             // Get the return URL from localStorage
             const returnTo = localStorage.getItem('returnTo');
+            console.log("Index: Return URL from localStorage:", returnTo);
+            
             if (returnTo && returnTo !== window.location.pathname) {
+              console.log(`Index: Navigating to return URL: ${returnTo}`);
               navigate(returnTo);
+            } else {
+              console.log("Index: No valid return URL found");
             }
           }
         } else if (paymentStatus === "cancel") {
+          console.log("Index: Payment was cancelled");
           toast({
             title: "Payment cancelled",
             description: "Your payment was cancelled. No charges were made.",
@@ -63,6 +78,7 @@ const Index = () => {
           // Clear stored URL on cancel
           localStorage.removeItem('returnTo');
           localStorage.removeItem('shouldDownload');
+          console.log("Index: Cleared localStorage items after cancel");
         }
 
         // Clear the payment_status from URL to prevent multiple toasts
@@ -70,8 +86,9 @@ const Index = () => {
           prev.delete("payment_status");
           return prev;
         });
+        console.log("Index: Cleared payment_status from URL");
       } catch (error) {
-        console.error("Error in payment success handler:", error);
+        console.error("Index: Error in payment success handler:", error);
       }
     };
     
