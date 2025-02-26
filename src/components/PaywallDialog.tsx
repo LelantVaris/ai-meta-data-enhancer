@@ -34,23 +34,37 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const { user } = useAuth();
 
   useEffect(() => {
-    if (open) {
-      if (user) {
-        const metadata = user.user_metadata;
+    const checkSubscriptionStatus = async () => {
+      if (!open || !user) return;
+      
+      try {
+        // Check if user has an active subscription
+        const { data, error } = await supabase
+          .from('user_subscriptions')
+          .select('subscription_status')
+          .eq('user_id', user.id)
+          .single();
         
-        if (metadata && metadata.paid_user) {
+        if (error) {
+          console.error("Error checking subscription status:", error);
+          setPaymentStatus(PaymentStatus.NOT_PAID);
+          return;
+        }
+        
+        if (data && data.subscription_status === 'active') {
           setPaymentStatus(PaymentStatus.PAID);
         } else {
           setPaymentStatus(PaymentStatus.NOT_PAID);
         }
         
-        console.log("User authenticated:", user.id);
-        console.log("User metadata:", metadata);
-      } else {
+        console.log("User subscription status:", data);
+      } catch (error) {
+        console.error("Error checking payment status:", error);
         setPaymentStatus(PaymentStatus.NOT_PAID);
-        console.log("User not authenticated");
       }
-    }
+    };
+    
+    checkSubscriptionStatus();
   }, [open, user]);
 
   const handleOneTimePayment = async () => {
@@ -73,6 +87,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           quantity: 1,
           mode: 'payment',
           customerId: user.id,
+          purchaseType: 'one_time',
         },
       });
       
@@ -119,6 +134,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           quantity: 1,
           mode: 'subscription',
           customerId: user.id,
+          purchaseType: 'monthly',
         },
       });
       

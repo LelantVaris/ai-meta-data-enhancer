@@ -27,7 +27,7 @@ serve(async (req) => {
     });
 
     // Get request body
-    const { price, quantity, mode, customerId } = await req.json();
+    const { price, quantity, mode, customerId, purchaseType = 'one_time' } = await req.json();
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
@@ -44,6 +44,7 @@ serve(async (req) => {
       client_reference_id: customerId, // Store Supabase user ID as reference
       metadata: {
         supabase_user_id: customerId,
+        purchase_type: purchaseType,
       },
     });
 

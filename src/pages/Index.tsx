@@ -27,13 +27,17 @@ const Index = () => {
       
       try {
         if (paymentStatus === "success" && user) {
-          // Update user metadata to indicate they've paid
-          const { error } = await supabase.auth.updateUser({
-            data: { paid_user: true }
-          });
+          // Create or update user subscription status
+          const { error } = await supabase
+            .from('user_subscriptions')
+            .upsert({
+              user_id: user.id,
+              subscription_status: 'active',
+              subscription_type: 'one_time',
+            }, { onConflict: 'user_id' });
           
           if (error) {
-            console.error("Error updating user metadata:", error);
+            console.error("Error updating subscription status:", error);
             toast({
               title: "Payment successful",
               description: "But we couldn't update your account. Please contact support.",
@@ -63,7 +67,7 @@ const Index = () => {
     };
     
     handlePaymentSuccess();
-  }, [paymentStatus, user]); // Only depend on paymentStatus and user
+  }, [paymentStatus, user, setSearchParams, toast]);
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">

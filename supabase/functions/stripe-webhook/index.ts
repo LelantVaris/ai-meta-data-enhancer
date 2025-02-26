@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.2.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
@@ -62,17 +61,24 @@ serve(async (req) => {
         const session = event.data.object;
         // Use client_reference_id which contains the Supabase user ID
         const userId = session.client_reference_id;
+        const metadata = session.metadata || {};
+        const purchaseType = metadata.purchase_type || 'one_time';
         
         if (userId) {
-          console.log("Updating user:", userId);
-          const { error: updateError } = await supabase.auth.admin.updateUserById(
-            userId,
-            { user_metadata: { paid_user: true } }
-          );
+          console.log(`Processing completed checkout for user: ${userId}, purchase type: ${purchaseType}`);
+          
+          // Update subscription table
+          const { error } = await supabase
+            .from('user_subscriptions')
+            .upsert({
+              user_id: userId,
+              subscription_status: 'active',
+              subscription_type: purchaseType,
+            }, { onConflict: 'user_id' });
 
-          if (updateError) {
-            console.error("Error updating user metadata:", updateError);
-            throw updateError;
+          if (error) {
+            console.error("Error updating subscription status:", error);
+            throw error;
           }
         }
         break;
@@ -82,23 +88,55 @@ serve(async (req) => {
         const invoice = event.data.object;
         const customerId = invoice.customer;
         
-        // Find user by Stripe customer ID in metadata
-        const { data: user, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("raw_user_meta_data->stripe_customer_id", customerId)
+        // Subscription payments will keep active
+        const { data, error: userError } = await supabase
+          .from("user_subscriptions")
+          .select("user_id")
+          .eq("user_id", customerId)
           .maybeSingle();
           
         if (userError) {
           console.error("Error finding user by Stripe ID:", userError);
-        } else if (user) {
-          const { error: updateError } = await supabase.auth.admin.updateUserById(
-            user.id,
-            { user_metadata: { paid_user: true } }
-          );
+        } else if (data) {
+          const { error: updateError } = await supabase
+            .from('user_subscriptions')
+            .update({ 
+              subscription_status: 'active',
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', data.user_id);
           
           if (updateError) {
-            console.error("Error updating user subscription metadata:", updateError);
+            console.error("Error updating subscription status:", updateError);
+          }
+        }
+        break;
+      }
+      
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object;
+        const customerId = subscription.customer;
+        
+        // Find the user and set their subscription to inactive
+        const { data, error: userError } = await supabase
+          .from("user_subscriptions")
+          .select("user_id")
+          .eq("user_id", customerId)
+          .maybeSingle();
+          
+        if (userError) {
+          console.error("Error finding user for canceled subscription:", userError);
+        } else if (data) {
+          const { error: updateError } = await supabase
+            .from('user_subscriptions')
+            .update({ 
+              subscription_status: 'inactive',
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', data.user_id);
+          
+          if (updateError) {
+            console.error("Error updating subscription status to inactive:", updateError);
           }
         }
         break;
