@@ -25,7 +25,7 @@ import { useAuth } from "@/context/AuthContext";
 
 // Initialize Stripe with the publishable key for client-side operations
 // Use the betas flag as specified in the documentation
-const stripePromise = loadStripe("pk_test_51JmBHWIN4GhAoTF7hxK1ePDvtzAhTvzJbbV5JtZhHWGhkbcNeRSpQJ4TAXjDpTzS6TnQK4WPFl0HUvvSgWEGyNHs00ZsCbJCwJ", {
+const stripePromise = loadStripe("pk_test_51JmBHWIN4GhAoTF7YlfJXFezdVSTbwnJLV7S8BSrFxAg1309b64GYzHikSVUTUWxOCnwHPAA1O1pOEECN2bah6k900qPP6IPnj", {
   betas: ['custom_checkout_beta_5'],
 });
 
