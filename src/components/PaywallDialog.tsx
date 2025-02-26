@@ -124,26 +124,25 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     
     if (session) {
       // User is logged in, check subscription status
-      const { data: subscriptions } = await supabase
+      // We'll use a more generic approach with custom queries to avoid type issues
+      const { data: subscriptions, error: subError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', session.user.id)
-        .eq('status', 'active')
-        .single();
+        .eq('status', 'active');
       
-      if (subscriptions) {
+      if (subscriptions && subscriptions.length > 0) {
         // User has an active subscription
         setPaymentStatus(PaymentStatus.PAID);
       } else {
         // Check if user has made a one-time purchase
-        const { data: purchases } = await supabase
+        const { data: purchases, error: purchaseError } = await supabase
           .from('purchases')
           .select('*')
           .eq('user_id', session.user.id)
-          .eq('status', 'succeeded')
-          .single();
+          .eq('status', 'succeeded');
         
-        if (purchases) {
+        if (purchases && purchases.length > 0) {
           setPaymentStatus(PaymentStatus.PAID);
         }
       }
