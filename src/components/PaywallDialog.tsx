@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
 import {
   Dialog,
   DialogClose,
@@ -16,6 +17,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 
+// Initialize Stripe
+const stripePromise = loadStripe('pk_test_51JmBHWIN4GhAoTF7hxK1ePDvtzAhTvzJbbV5JtZhHWGhkbcNeRSpQJ4TAXjDpTzS6TnQK4WPFl0HUvvSgWEGyNHs00ZsCbJCwJ');
+
 interface PaywallDialogProps {
   onDownload: () => void;
   trigger?: React.ReactNode;
@@ -27,24 +31,28 @@ export enum PaymentStatus {
   PAID = "paid",
 }
 
+interface PaymentFormData {
+  cardNumber: string;
+  expiry: string;
+  cvc: string;
+}
+
 export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProps) {
   const [open, setOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.NOT_PAID);
+  const [selectedPlan, setSelectedPlan] = useState<'one_time' | 'subscription' | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
   // Test mode Stripe product IDs
-  const ONE_TIME_PRICE_ID = 'price_1Qwne7IN4GhAoTF7Ru6kQ8mq'; // One-time purchase ID
-  const SUBSCRIPTION_PRICE_ID = 'price_1QwndqIN4GhAoTF7gUxlTCFx'; // Subscription ID
+  const ONE_TIME_PRICE_ID = 'price_1Qwne7IN4GhAoTF7Ru6kQ8mq';
+  const SUBSCRIPTION_PRICE_ID = 'price_1QwndqIN4GhAoTF7gUxlTCFx';
 
   useEffect(() => {
     const checkSubscriptionStatus = async () => {
       if (!open || !user) return;
       
-      console.log("PaywallDialog: Checking subscription status for user", user.id);
-      
       try {
-        // Check if user has an active subscription
         const { data, error } = await supabase
           .from('user_subscriptions')
           .select('subscription_status, subscription_type')
@@ -52,22 +60,18 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           .single();
         
         if (error) {
-          console.error("PaywallDialog: Error checking subscription status:", error);
+          console.error("Error checking subscription status:", error);
           setPaymentStatus(PaymentStatus.NOT_PAID);
           return;
         }
         
-        console.log("PaywallDialog: Subscription data from DB:", data);
-        
         if (data && data.subscription_status === 'active') {
-          console.log("PaywallDialog: User has active subscription, setting to PAID");
           setPaymentStatus(PaymentStatus.PAID);
         } else {
-          console.log("PaywallDialog: User does not have active subscription");
           setPaymentStatus(PaymentStatus.NOT_PAID);
         }
       } catch (error) {
-        console.error("PaywallDialog: Error checking payment status:", error);
+        console.error("Error checking payment status:", error);
         setPaymentStatus(PaymentStatus.NOT_PAID);
       }
     };
@@ -75,7 +79,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     checkSubscriptionStatus();
   }, [open, user]);
 
-  const handleOneTimePayment = async () => {
+  const handlePayment = async (paymentType: 'one_time' | 'subscription') => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -85,158 +89,75 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       setOpen(false);
       return;
     }
-    
-    setPaymentStatus(PaymentStatus.PROCESSING);
-    console.log("PaywallDialog: Starting one-time payment flow");
-    
-    try {
-      // Store current URL in localStorage before redirect
-      const currentPath = window.location.pathname + window.location.search;
-      console.log("PaywallDialog: Saving current path to localStorage:", currentPath);
-      localStorage.setItem('returnTo', currentPath);
-      localStorage.setItem('shouldDownload', 'true');
-      
-      console.log("PaywallDialog: Calling create-checkout-session function with user ID:", user.id);
-      console.log("PaywallDialog: Using price ID:", ONE_TIME_PRICE_ID);
-      
-      const response = await supabase.functions.invoke('create-checkout-session', {
-        body: {
-          price: ONE_TIME_PRICE_ID,
-          quantity: 1,
-          mode: 'payment',
-          customerId: user.id,
-          purchaseType: 'one_time',
-        },
-      });
-      
-      console.log("PaywallDialog: Full response from create-checkout-session:", response);
-      
-      if (response.error) {
-        console.error("PaywallDialog: Error from create-checkout-session:", response.error);
-        throw new Error(`Error creating checkout session: ${response.error.message || 'Unknown error'}`);
-      }
-      
-      if (!response.data) {
-        console.error("PaywallDialog: No data returned from checkout session");
-        throw new Error('No data returned from checkout session');
-      }
-      
-      console.log("PaywallDialog: Received checkout session data:", response.data);
-      
-      if (response.data?.url) {
-        console.log("PaywallDialog: Redirecting to Stripe checkout:", response.data.url);
-        window.location.href = response.data.url;
-      } else {
-        console.error("PaywallDialog: No URL returned from checkout session");
-        throw new Error('No URL returned from checkout session');
-      }
-    } catch (error: any) {
-      console.error("PaywallDialog: Error in payment flow:", error);
-      setPaymentStatus(PaymentStatus.NOT_PAID);
-      toast({
-        title: "Could not process payment",
-        description: error?.message || "Please try again or contact support.",
-        variant: "destructive",
-      });
-    }
-  };
 
-  const handleSubscription = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in before subscribing.",
-        variant: "destructive",
-      });
-      setOpen(false);
-      return;
-    }
-    
+    setSelectedPlan(paymentType);
     setPaymentStatus(PaymentStatus.PROCESSING);
-    console.log("PaywallDialog: Starting subscription payment flow");
-    
+
     try {
-      // Store current URL in localStorage before redirect
-      const currentPath = window.location.pathname + window.location.search;
-      console.log("PaywallDialog: Saving current path to localStorage:", currentPath);
-      localStorage.setItem('returnTo', currentPath);
-      localStorage.setItem('shouldDownload', 'true');
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error('Stripe failed to initialize');
+
+      const priceId = paymentType === 'one_time' ? ONE_TIME_PRICE_ID : SUBSCRIPTION_PRICE_ID;
       
-      console.log("PaywallDialog: Calling create-checkout-session function with user ID:", user.id);
-      console.log("PaywallDialog: Using price ID:", SUBSCRIPTION_PRICE_ID);
-      
-      const response = await supabase.functions.invoke('create-checkout-session', {
+      // Create payment intent
+      const response = await supabase.functions.invoke('create-payment-intent', {
         body: {
-          price: SUBSCRIPTION_PRICE_ID,
-          quantity: 1,
-          mode: 'subscription',
+          priceId,
           customerId: user.id,
-          purchaseType: 'monthly',
+          paymentType,
         },
       });
+
+      if (response.error) throw new Error(response.error.message);
       
-      console.log("PaywallDialog: Full response from create-checkout-session:", response);
-      
-      if (response.error) {
-        console.error("PaywallDialog: Error from create-checkout-session:", response.error);
-        throw new Error(`Error creating checkout session: ${response.error.message || 'Unknown error'}`);
+      const { clientSecret } = response.data;
+
+      // Confirm the payment
+      const { error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: {
+            // You would typically use stripe.elements() here
+            // This is just for demonstration
+            token: 'tok_visa', // Test token
+          },
+        },
+      });
+
+      if (stripeError) {
+        throw new Error(stripeError.message);
       }
-      
-      if (!response.data) {
-        console.error("PaywallDialog: No data returned from checkout session");
-        throw new Error('No data returned from checkout session');
-      }
-      
-      console.log("PaywallDialog: Received checkout session data:", response.data);
-      
-      if (response.data?.url) {
-        console.log("PaywallDialog: Redirecting to Stripe checkout:", response.data.url);
-        window.location.href = response.data.url;
-      } else {
-        console.error("PaywallDialog: No URL returned from checkout session");
-        throw new Error('No URL returned from checkout session');
-      }
-    } catch (error: any) {
-      console.error("PaywallDialog: Error in subscription flow:", error);
-      setPaymentStatus(PaymentStatus.NOT_PAID);
+
+      // Payment successful
+      setPaymentStatus(PaymentStatus.PAID);
       toast({
-        title: "Could not process subscription",
-        description: error?.message || "Please try again or contact support.",
+        title: "Payment successful",
+        description: "Thank you for your purchase!",
+      });
+
+    } catch (error: any) {
+      console.error("Payment error:", error);
+      setPaymentStatus(PaymentStatus.NOT_PAID);
+      setSelectedPlan(null);
+      toast({
+        title: "Payment failed",
+        description: error.message || "Please try again or contact support.",
         variant: "destructive",
       });
     }
   };
 
   const handleDownload = () => {
-    console.log("PaywallDialog: Handling download");
     onDownload();
     setOpen(false);
-    // Clear the download flag after successful download
-    localStorage.removeItem('shouldDownload');
-    console.log("PaywallDialog: Cleared shouldDownload flag");
   };
 
-  // Auto-open dialog if returning from successful payment
-  useEffect(() => {
-    console.log("PaywallDialog: Payment status:", paymentStatus);
-    console.log("PaywallDialog: shouldDownload flag:", localStorage.getItem('shouldDownload'));
-    
-    if (paymentStatus === PaymentStatus.PAID && localStorage.getItem('shouldDownload') === 'true') {
-      console.log("PaywallDialog: Auto-opening dialog after successful payment");
-      setOpen(true);
-    }
-  }, [paymentStatus]);
-
   return (
-    <Dialog open={open} onOpenChange={(newOpen) => {
-      console.log("PaywallDialog: Dialog open state changing to:", newOpen);
-      setOpen(newOpen);
-    }}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || <Button>Open Paywall</Button>}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        {paymentStatus === PaymentStatus.NOT_PAID && (
+        {paymentStatus === PaymentStatus.NOT_PAID && !selectedPlan && (
           <>
             <DialogHeader>
               <DialogTitle>Download CSV</DialogTitle>
@@ -247,7 +168,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-1 gap-4">
                 <Button 
-                  onClick={handleOneTimePayment}
+                  onClick={() => handlePayment('one_time')}
                   className="w-full justify-between"
                   variant="outline"
                 >
@@ -262,7 +183,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
                 </Button>
                 
                 <Button 
-                  onClick={handleSubscription}
+                  onClick={() => handlePayment('subscription')}
                   className="w-full justify-between"
                 >
                   <div className="flex flex-col items-start">
@@ -291,7 +212,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             <h3 className="mt-4 text-lg font-medium">Processing Payment...</h3>
             <p className="text-sm text-muted-foreground mt-2">
-              Please don't close this window.
+              Please wait while we process your payment.
             </p>
           </div>
         )}
