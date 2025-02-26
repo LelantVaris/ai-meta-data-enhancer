@@ -2,7 +2,7 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
-import { enhanceMeta, detectMetaColumns } from "@/lib/meta-enhancer";
+import { enhanceMetaStreaming, detectMetaColumns } from "@/lib/meta-enhancer";
 import { MetaData, ColumnDetectionResult } from "@/lib/types";
 import { parseCSVLine } from "@/utils/csv-parser";
 
@@ -10,6 +10,7 @@ export const useMetaEnhancerLogic = () => {
   const [file, setFile] = useState<File | null>(null);
   const [enhancedData, setEnhancedData] = useState<MetaData[] | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAllProcessed, setIsAllProcessed] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [columnDetection, setColumnDetection] = useState<ColumnDetectionResult | null>(null);
   const [titleColumnIndex, setTitleColumnIndex] = useState<number>(-1);
@@ -20,6 +21,7 @@ export const useMetaEnhancerLogic = () => {
     setFile(file);
     setEnhancedData(null);
     setIsSuccess(false);
+    setIsAllProcessed(false);
     setColumnDetection(null);
     setTitleColumnIndex(-1);
     setDescriptionColumnIndex(-1);
@@ -105,23 +107,55 @@ export const useMetaEnhancerLogic = () => {
     }
 
     setIsProcessing(true);
+    setIsSuccess(true);
+    
     try {
       const data = await parseFile(file, titleColumnIndex, descriptionColumnIndex);
-      const enhanced = await enhanceMeta(data);
-      setEnhancedData(enhanced);
-      setIsSuccess(true);
-      toast({
-        title: "Enhancement complete",
-        description: `Successfully enhanced ${enhanced.length} meta entries.`,
-      });
+      
+      // Initialize with empty placeholder data with loading status
+      const initialData = data.map(item => ({
+        ...item,
+        enhanced_title: '',
+        enhanced_description: '',
+        isLoading: true
+      }));
+      
+      setEnhancedData(initialData);
+      
+      // Stream enhancements
+      enhanceMetaStreaming(
+        data,
+        (index, enhancedItem) => {
+          setEnhancedData(prevData => {
+            if (!prevData) return null;
+            
+            const newData = [...prevData];
+            newData[index] = {
+              ...newData[index],
+              ...enhancedItem,
+              isLoading: false
+            };
+            
+            return newData;
+          });
+        },
+        () => {
+          setIsAllProcessed(true);
+          setIsProcessing(false);
+          toast({
+            title: "Enhancement complete",
+            description: `Successfully enhanced ${data.length} meta entries.`,
+          });
+        }
+      );
     } catch (error) {
       toast({
         title: "Error processing file",
         description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
-    } finally {
       setIsProcessing(false);
+      setIsSuccess(false);
     }
   };
 
@@ -213,6 +247,7 @@ export const useMetaEnhancerLogic = () => {
     setFile(null);
     setEnhancedData(null);
     setIsSuccess(false);
+    setIsAllProcessed(false);
     setColumnDetection(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -222,6 +257,7 @@ export const useMetaEnhancerLogic = () => {
     enhancedData,
     isProcessing,
     isSuccess,
+    isAllProcessed,
     columnDetection,
     titleColumnIndex,
     descriptionColumnIndex,

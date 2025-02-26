@@ -33,6 +33,116 @@ export function enhanceMeta(data: MetaData[]): Promise<MetaData[]> {
   return enhanceDataWithAI(preparedData);
 }
 
+// New streaming version
+export function enhanceMetaStreaming(
+  data: MetaData[],
+  onItemComplete: (index: number, item: Partial<MetaData>) => void,
+  onAllComplete: () => void
+): void {
+  // Handle missing fields first
+  const preparedData = data.map(item => {
+    let originalTitle = item.original_title;
+    let originalDescription = item.original_description;
+    
+    if (!originalTitle && originalDescription) {
+      originalTitle = inferTitleFromDescription(originalDescription);
+    } else if (originalTitle && !originalDescription) {
+      originalDescription = inferDescriptionFromTitle(originalTitle);
+    }
+    
+    return {
+      ...item,
+      original_title: originalTitle || '',
+      original_description: originalDescription || ''
+    };
+  });
+
+  // We'll process items in small batches to avoid overwhelming the API
+  const BATCH_SIZE = 3;
+  let completedCount = 0;
+  
+  const processBatch = async (startIndex: number) => {
+    const endIndex = Math.min(startIndex + BATCH_SIZE, preparedData.length);
+    const batchPromises = [];
+    
+    for (let i = startIndex; i < endIndex; i++) {
+      batchPromises.push(processItem(i, preparedData[i]));
+    }
+    
+    await Promise.all(batchPromises);
+    
+    // Process next batch if there are more items
+    if (endIndex < preparedData.length) {
+      processBatch(endIndex);
+    } else {
+      onAllComplete();
+    }
+  };
+  
+  const processItem = async (index: number, item: MetaData) => {
+    try {
+      // First, process the title
+      let enhancedTitle: string;
+      if (!item.original_title || item.original_title.length <= MAX_TITLE_LENGTH) {
+        enhancedTitle = optimizeTitle(item.original_title);
+        // Update immediately for rule-based optimizations
+        onItemComplete(index, {
+          enhanced_title: enhancedTitle
+        });
+      } else {
+        try {
+          enhancedTitle = await enhanceWithAI(item.original_title, true, MAX_TITLE_LENGTH);
+          onItemComplete(index, {
+            enhanced_title: enhancedTitle
+          });
+        } catch (error) {
+          console.error("Error enhancing title with AI, falling back to rule-based:", error);
+          enhancedTitle = optimizeTitle(item.original_title);
+          onItemComplete(index, {
+            enhanced_title: enhancedTitle
+          });
+        }
+      }
+      
+      // Then, process the description
+      let enhancedDescription: string;
+      if (!item.original_description || item.original_description.length <= MAX_DESCRIPTION_LENGTH) {
+        enhancedDescription = optimizeDescription(item.original_description);
+        onItemComplete(index, {
+          enhanced_description: enhancedDescription
+        });
+      } else {
+        try {
+          enhancedDescription = await enhanceWithAI(item.original_description, false, MAX_DESCRIPTION_LENGTH);
+          onItemComplete(index, {
+            enhanced_description: enhancedDescription
+          });
+        } catch (error) {
+          console.error("Error enhancing description with AI, falling back to rule-based:", error);
+          enhancedDescription = optimizeDescription(item.original_description);
+          onItemComplete(index, {
+            enhanced_description: enhancedDescription
+          });
+        }
+      }
+      
+      completedCount++;
+      
+    } catch (error) {
+      console.error(`Error processing item ${index}:`, error);
+      // Fall back to rule-based for both fields if there's an error
+      onItemComplete(index, {
+        enhanced_title: optimizeTitle(item.original_title),
+        enhanced_description: optimizeDescription(item.original_description)
+      });
+      completedCount++;
+    }
+  };
+  
+  // Start processing the first batch
+  processBatch(0);
+}
+
 async function enhanceDataWithAI(data: MetaData[]): Promise<MetaData[]> {
   const enhancedData: MetaData[] = [];
   
