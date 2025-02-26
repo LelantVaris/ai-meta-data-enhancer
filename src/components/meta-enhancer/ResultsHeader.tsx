@@ -2,6 +2,7 @@
 import { motion } from "framer-motion";
 import { Check, Upload, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import PaywallDialog from "@/components/PaywallDialog";
 
 interface ResultsHeaderProps {
   dataLength: number;
@@ -41,13 +42,15 @@ const ResultsHeader = ({ dataLength, onReset, onDownload }: ResultsHeaderProps) 
           Upload New File
         </Button>
         
-        <Button 
-          onClick={onDownload}
-          className="bg-neutral-900 hover:bg-neutral-800 text-white"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Download CSV
-        </Button>
+        <PaywallDialog 
+          onDownload={onDownload}
+          trigger={
+            <Button className="bg-neutral-900 hover:bg-neutral-800 text-white">
+              <Download className="h-4 w-4 mr-2" />
+              Download CSV
+            </Button>
+          }
+        />
       </motion.div>
     </div>
   );
