@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download, CreditCard } from "lucide-react";
 import { loadStripe, StripeCardElement } from "@stripe/stripe-js";
@@ -315,6 +316,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setSelectedPlan(null);
   };
 
+  // Handle subscription users differently - they can directly download
   if (paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE) {
     return (
       <span onClick={onDownload}>
@@ -322,6 +324,11 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       </span>
     );
   }
+
+  // Determine if we should show the payment form
+  const showPaymentForm = selectedPlan !== null && paymentStatus !== PaymentStatus.SUBSCRIPTION_ACTIVE;
+  // Determine if we should show the plan selection
+  const showPlanSelection = !selectedPlan && paymentStatus === PaymentStatus.NOT_PAID;
 
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
@@ -335,7 +342,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
         {trigger || <Button>Open Paywall</Button>}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        {paymentStatus === PaymentStatus.NOT_PAID && !selectedPlan && (
+        {showPlanSelection && (
           <>
             <DialogHeader>
               <DialogTitle>Download CSV</DialogTitle>
@@ -385,7 +392,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           </>
         )}
         
-        {selectedPlan && paymentStatus !== PaymentStatus.SUBSCRIPTION_ACTIVE && (
+        {showPaymentForm && (
           <>
             <DialogHeader>
               <DialogTitle>
