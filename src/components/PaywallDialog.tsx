@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 
-// Initialize Stripe with the public key
+// Initialize Stripe with the public key - this is the client-side publishable key
 const stripePromise = loadStripe('pk_test_51JmBHWIN4GhAoTF7hxK1ePDvtzAhTvzJbbV5JtZhHWGhkbcNeRSpQJ4TAXjDpTzS6TnQK4WPFl0HUvvSgWEGyNHs00ZsCbJCwJ');
 
 interface PaywallDialogProps {
@@ -65,7 +65,7 @@ function CheckoutForm({
     setErrorMessage(null);
 
     try {
-      // Create payment intent
+      // Create payment intent using server-side function which has the secret key
       const response = await supabase.functions.invoke('create-payment-intent', {
         body: {
           priceId,
@@ -78,7 +78,7 @@ function CheckoutForm({
       
       const { clientSecret } = response.data;
 
-      // Confirm the payment
+      // Confirm the payment with the client-side publishable key (via stripePromise)
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement) as StripeCardElement,

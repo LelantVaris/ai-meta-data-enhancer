@@ -16,7 +16,7 @@ serve(async (req) => {
   }
   
   try {
-    // Use the provided secret key
+    // Use the provided secret key directly - this is the server-side secret key
     const stripeSecretKey = "sk_test_51JmBHWIN4GhAoTF7hdVq57mDhlotp7NC9OgvtvrobJ3r4G6dc6pqzx8zgBMIEVCm0yWHfZG1oDzxKSagoxkfrddo00viiZiach";
     
     const stripe = new Stripe(stripeSecretKey, {
