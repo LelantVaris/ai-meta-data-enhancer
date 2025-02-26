@@ -205,6 +205,10 @@ export const useMetaEnhancerLogic = () => {
     });
   };
 
+  const handleDataChange = (updatedData: MetaData[]) => {
+    setEnhancedData(updatedData);
+  };
+
   const resetAll = () => {
     setFile(null);
     setEnhancedData(null);
@@ -225,6 +229,7 @@ export const useMetaEnhancerLogic = () => {
     handleFileChange,
     handleEnhance,
     handleDownload,
+    handleDataChange,
     setTitleColumnIndex,
     setDescriptionColumnIndex,
     resetAll
