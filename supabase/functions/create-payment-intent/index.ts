@@ -45,7 +45,7 @@ serve(async (req) => {
     
     console.log("Creating payment intent:", { amount, currency, customerId });
 
-    // Create a payment intent with the Stripe SDK
+    // Create a payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency,

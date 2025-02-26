@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download, CreditCard } from "lucide-react";
 import { loadStripe, StripeCardElement } from "@stripe/stripe-js";
@@ -23,8 +22,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 
-// Initialize Stripe with the public key
-const stripePromise = loadStripe('pk_test_51JmBHWIN4GhAoTF7hxK1ePDvtzAhTvzJbbV5JtZhHWGhkbcNeRSpQJ4TAXjDpTzS6TnQK4WPFl0HUvvSgWEGyNHs00ZsCbJCwJ');
+// Initialize Stripe with the secret key for full access
+const stripePromise = loadStripe('sk_test_51JmBHWIN4GhAoTF7hdVq57mDhlotp7NC9OgvtvrobJ3r4G6dc6pqzx8zgBMIEVCm0yWHfZG1oDzxKSagoxkfrddo00viiZiach');
 
 interface PaywallDialogProps {
   onDownload: () => void;
