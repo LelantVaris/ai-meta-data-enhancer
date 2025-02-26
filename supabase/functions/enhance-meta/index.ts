@@ -1,6 +1,8 @@
 
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,36 +16,6 @@ serve(async (req) => {
   }
 
   try {
-    // Create a Supabase client with the Auth context of the function
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    );
-
-    // Get secrets from Supabase
-    const { data: secretData, error: secretError } = await supabaseClient
-      .from('secrets')
-      .select('value')
-      .eq('name', 'OPENAI_API_KEY')
-      .single();
-
-    if (secretError) {
-      // Fall back to environment variable if secret retrieval fails
-      console.error('Error fetching secret:', secretError);
-    }
-
-    // Use the secret from the database or fall back to environment variable
-    const openAIApiKey = secretData?.value || Deno.env.get('OPENAI_API_KEY');
-
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not found');
-    }
-
     const { text, isTitle, maxLength } = await req.json();
     
     // Skip empty text
