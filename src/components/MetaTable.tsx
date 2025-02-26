@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Check, Copy, Sparkles, Edit, Save } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -44,6 +44,20 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
     return () => clearTimeout(timer);
   }, [copiedItems]);
 
+  // Sort data to prioritize items with AI content at the top
+  const sortedData = useMemo(() => {
+    return [...editableData].sort((a, b) => {
+      const aHasAI = wasGenerated(a.original_title, a.enhanced_title) || 
+                   wasGenerated(a.original_description, a.enhanced_description);
+      const bHasAI = wasGenerated(b.original_title, b.enhanced_title) || 
+                   wasGenerated(b.original_description, b.enhanced_description);
+      
+      if (aHasAI && !bHasAI) return -1;
+      if (!aHasAI && bHasAI) return 1;
+      return 0;
+    });
+  }, [editableData]);
+
   const copyToClipboard = (text: string, type: string, index: number) => {
     navigator.clipboard.writeText(text);
     setCopiedItems({ ...copiedItems, [`${type}-${index}`]: true });
@@ -73,18 +87,31 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
     value: string
   ) => {
     const updatedData = [...editableData];
-    updatedData[index][field] = value;
-    setEditableData(updatedData);
+    const dataIndex = updatedData.findIndex(
+      item => item === sortedData[index]
+    );
     
-    if (onDataChange) {
-      const cleanData = updatedData.map(({ isLoading, ...rest }) => rest);
-      onDataChange(cleanData);
+    if (dataIndex !== -1) {
+      updatedData[dataIndex][field] = value;
+      setEditableData(updatedData);
+      
+      if (onDataChange) {
+        const cleanData = updatedData.map(({ isLoading, ...rest }) => rest);
+        onDataChange(cleanData);
+      }
     }
   };
 
-  // Function to check if a field was AI-inferred based on empty original content
-  const wasInferred = (original: string): boolean => {
+  // Function to check if a field was completely AI-generated
+  const wasGenerated = (original: string, enhanced: string): boolean => {
     return !original || original.trim() === '';
+  };
+
+  // Function to check if a field was rewritten by AI (had original content but was modified)
+  const wasRewritten = (original: string, enhanced: string): boolean => {
+    return original && original.trim() !== '' && 
+           enhanced && enhanced.trim() !== '' && 
+           original.trim() !== enhanced.trim();
   };
 
   if (data.length === 0) {
@@ -119,7 +146,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {editableData.map((item, index) => (
+            {sortedData.map((item, index) => (
               <TableRow key={`row-${index}`}>
                 <TableCell className="align-top py-4 w-[450px] max-w-[450px]">
                   <div className="space-y-2">
@@ -129,12 +156,18 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
                           variant="outline" 
                           className="text-xs font-normal bg-muted/30 border-border"
                         >
-                          {editableData[index].enhanced_title.length} / 60 chars
+                          {item.enhanced_title.length} / 60 chars
                         </Badge>
-                        {wasInferred(item.original_title) && (
+                        {wasGenerated(item.original_title, item.enhanced_title) && (
                           <Badge className="text-xs font-normal bg-violet-50 text-violet-700 border-violet-200 flex items-center gap-1">
                             <Sparkles className="h-3 w-3" />
                             <span>AI-Generated</span>
+                          </Badge>
+                        )}
+                        {wasRewritten(item.original_title, item.enhanced_title) && (
+                          <Badge className="text-xs font-normal bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            <span>AI-Rewritten</span>
                           </Badge>
                         )}
                       </div>
@@ -146,7 +179,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
                               variant="outline"
                               size="sm"
                               className="h-6 w-6 p-0"
-                              onClick={() => copyToClipboard(editableData[index].enhanced_title, 'title', index)}
+                              onClick={() => copyToClipboard(item.enhanced_title, 'title', index)}
                               disabled={item.isLoading}
                             >
                               {copiedItems[`title-${index}`] ? (
@@ -179,7 +212,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
                       <Skeleton className="w-full h-10" />
                     ) : (
                       <Input
-                        value={editableData[index].enhanced_title}
+                        value={item.enhanced_title}
                         onChange={(e) => handleTextChange(index, 'enhanced_title', e.target.value)}
                         onBlur={() => {
                           if (onDataChange) {
@@ -208,12 +241,18 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
                           variant="outline" 
                           className="text-xs font-normal bg-muted/30 border-border"
                         >
-                          {editableData[index].enhanced_description.length} / 160 chars
+                          {item.enhanced_description.length} / 160 chars
                         </Badge>
-                        {wasInferred(item.original_description) && (
+                        {wasGenerated(item.original_description, item.enhanced_description) && (
                           <Badge className="text-xs font-normal bg-violet-50 text-violet-700 border-violet-200 flex items-center gap-1">
                             <Sparkles className="h-3 w-3" />
                             <span>AI-Generated</span>
+                          </Badge>
+                        )}
+                        {wasRewritten(item.original_description, item.enhanced_description) && (
+                          <Badge className="text-xs font-normal bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            <span>AI-Rewritten</span>
                           </Badge>
                         )}
                       </div>
@@ -225,7 +264,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
                               variant="outline"
                               size="sm"
                               className="h-6 w-6 p-0"
-                              onClick={() => copyToClipboard(editableData[index].enhanced_description, 'desc', index)}
+                              onClick={() => copyToClipboard(item.enhanced_description, 'desc', index)}
                               disabled={item.isLoading}
                             >
                               {copiedItems[`desc-${index}`] ? (
@@ -258,7 +297,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
                       <Skeleton className="w-full h-20" />
                     ) : (
                       <Textarea
-                        value={editableData[index].enhanced_description}
+                        value={item.enhanced_description}
                         onChange={(e) => handleTextChange(index, 'enhanced_description', e.target.value)}
                         onBlur={() => {
                           if (onDataChange) {
