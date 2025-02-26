@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { UserCircle, LogOut } from "lucide-react";
 import MetaEnhancer from "@/components/MetaEnhancer";
 import Hero from "@/components/Hero";
@@ -11,7 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { toast } = useToast();
@@ -21,37 +22,48 @@ const Index = () => {
   
   useEffect(() => {
     const handlePaymentSuccess = async () => {
-      if (paymentStatus === "success" && user) {
-        try {
+      // Only handle payment status if it exists
+      if (!paymentStatus) return;
+      
+      try {
+        if (paymentStatus === "success" && user) {
           // Update user metadata to indicate they've paid
           const { error } = await supabase.auth.updateUser({
             data: { paid_user: true }
           });
           
-          if (error) throw error;
-          
+          if (error) {
+            console.error("Error updating user metadata:", error);
+            toast({
+              title: "Payment successful",
+              description: "But we couldn't update your account. Please contact support.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Payment successful!",
+              description: "Thank you for your purchase. You can now download CSV files anytime.",
+            });
+          }
+        } else if (paymentStatus === "cancel") {
           toast({
-            title: "Payment successful!",
-            description: "Thank you for your purchase. You can now download CSV files anytime.",
-          });
-        } catch (error) {
-          console.error("Error updating user metadata:", error);
-          toast({
-            title: "Payment successful",
-            description: "But we couldn't update your account. Please contact support.",
-            variant: "destructive",
+            title: "Payment cancelled",
+            description: "Your payment was cancelled. No charges were made.",
           });
         }
-      } else if (paymentStatus === "cancel") {
-        toast({
-          title: "Payment cancelled",
-          description: "Your payment was cancelled. No charges were made.",
+
+        // Clear the payment_status from URL to prevent multiple toasts
+        setSearchParams(prev => {
+          prev.delete("payment_status");
+          return prev;
         });
+      } catch (error) {
+        console.error("Error in payment success handler:", error);
       }
     };
     
     handlePaymentSuccess();
-  }, [paymentStatus, user, toast]);
+  }, [paymentStatus, user]); // Only depend on paymentStatus and user
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">

@@ -60,40 +60,30 @@ serve(async (req) => {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
-        const customerId = session.customer;
-        const customerEmail = session.customer_details?.email;
+        // Use client_reference_id which contains the Supabase user ID
+        const userId = session.client_reference_id;
+        
+        if (userId) {
+          console.log("Updating user:", userId);
+          const { error: updateError } = await supabase.auth.admin.updateUserById(
+            userId,
+            { user_metadata: { paid_user: true } }
+          );
 
-        if (customerEmail) {
-          const { data: users, error: userError } = await supabase
-            .from("auth")
-            .select("id")
-            .eq("email", customerEmail)
-            .single();
-
-          if (userError) {
-            console.error("Error finding user:", userError);
-          } else if (users) {
-            const userId = users.id;
-            const { error: updateError } = await supabase.auth.admin.updateUserById(
-              userId,
-              { user_metadata: { paid_user: true, stripe_customer_id: customerId } }
-            );
-
-            if (updateError) {
-              console.error("Error updating user metadata:", updateError);
-            }
+          if (updateError) {
+            console.error("Error updating user metadata:", updateError);
+            throw updateError;
           }
         }
         break;
       }
       
       case "invoice.payment_succeeded": {
-        // Handle successful subscription payments/renewals
         const invoice = event.data.object;
         const customerId = invoice.customer;
         
         // Find user by Stripe customer ID in metadata
-        const { data: users, error: userError } = await supabase
+        const { data: user, error: userError } = await supabase
           .from("users")
           .select("id")
           .eq("raw_user_meta_data->stripe_customer_id", customerId)
@@ -101,10 +91,9 @@ serve(async (req) => {
           
         if (userError) {
           console.error("Error finding user by Stripe ID:", userError);
-        } else if (users) {
-          const userId = users.id;
+        } else if (user) {
           const { error: updateError } = await supabase.auth.admin.updateUserById(
-            userId,
+            user.id,
             { user_metadata: { paid_user: true } }
           );
           
