@@ -4,6 +4,7 @@ export interface MetaData {
   original_description: string;
   enhanced_title: string;
   enhanced_description: string;
+  isLoading?: boolean;
 }
 
 export interface ColumnDetectionResult {
