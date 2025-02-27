@@ -1,4 +1,3 @@
-
 import { ColumnDetectionResult, MetaData } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -81,50 +80,39 @@ export function enhanceMetaStreaming(
   
   const processItem = async (index: number, item: MetaData) => {
     try {
-      // First, process the title
+      // Process both title and description
       let enhancedTitle: string;
+      let enhancedDescription: string;
+      
+      // Process title
       if (!item.original_title || item.original_title.length <= MAX_TITLE_LENGTH) {
         enhancedTitle = optimizeTitle(item.original_title);
-        // Update immediately for rule-based optimizations
-        onItemComplete(index, {
-          enhanced_title: enhancedTitle
-        });
       } else {
         try {
           enhancedTitle = await enhanceWithAI(item.original_title, true, MAX_TITLE_LENGTH);
-          onItemComplete(index, {
-            enhanced_title: enhancedTitle
-          });
         } catch (error) {
           console.error("Error enhancing title with AI, falling back to rule-based:", error);
           enhancedTitle = optimizeTitle(item.original_title);
-          onItemComplete(index, {
-            enhanced_title: enhancedTitle
-          });
         }
       }
       
-      // Then, process the description
-      let enhancedDescription: string;
+      // Process description
       if (!item.original_description || item.original_description.length <= MAX_DESCRIPTION_LENGTH) {
         enhancedDescription = optimizeDescription(item.original_description);
-        onItemComplete(index, {
-          enhanced_description: enhancedDescription
-        });
       } else {
         try {
           enhancedDescription = await enhanceWithAI(item.original_description, false, MAX_DESCRIPTION_LENGTH);
-          onItemComplete(index, {
-            enhanced_description: enhancedDescription
-          });
         } catch (error) {
           console.error("Error enhancing description with AI, falling back to rule-based:", error);
           enhancedDescription = optimizeDescription(item.original_description);
-          onItemComplete(index, {
-            enhanced_description: enhancedDescription
-          });
         }
       }
+      
+      // Send both title and description together
+      onItemComplete(index, {
+        enhanced_title: enhancedTitle,
+        enhanced_description: enhancedDescription
+      });
       
       completedCount++;
       
@@ -254,55 +242,33 @@ function inferDescriptionFromTitle(title: string): string {
 function optimizeTitle(title: string): string {
   if (!title) return '';
   
-  let optimized = title;
+  // Apply rule-based optimizations
+  const optimized = title
+    .trim()
+    // Capitalize first letter of each word for titles
+    .replace(/\b\w/g, c => c.toUpperCase())
+    // Remove excessive punctuation
+    .replace(/[!]{2,}/g, '!')
+    .replace(/[.]{2,}/g, '.')
+    .replace(/\s{2,}/g, ' ');
   
-  // If title is already within limits, return it
-  if (optimized.length <= MAX_TITLE_LENGTH) {
-    return optimized;
-  }
-  
-  // Try to truncate at a natural break point
-  const breakPoints = [' | ', ' - ', ': ', ', ', ' '];
-  
-  for (const breakPoint of breakPoints) {
-    const lastIndex = optimized.lastIndexOf(breakPoint, MAX_TITLE_LENGTH);
-    if (lastIndex > 0 && lastIndex <= MAX_TITLE_LENGTH) {
-      return optimized.substring(0, lastIndex);
-    }
-  }
-  
-  // If no good breaking point, just truncate
-  return optimized.substring(0, MAX_TITLE_LENGTH - 3) + '...';
+  return optimized.substring(0, MAX_TITLE_LENGTH);
 }
 
 function optimizeDescription(description: string): string {
   if (!description) return '';
   
-  let optimized = description;
+  // Apply rule-based optimizations
+  const optimized = description
+    .trim()
+    // Capitalize first letter of the description
+    .replace(/^\w/, c => c.toUpperCase())
+    // Ensure description ends with a period if it doesn't have ending punctuation
+    .replace(/([^.!?])$/, '$1.')
+    // Remove excessive spaces
+    .replace(/\s{2,}/g, ' ');
   
-  // If description is already within limits, return it
-  if (optimized.length <= MAX_DESCRIPTION_LENGTH) {
-    return optimized;
-  }
-  
-  // Try to truncate at a natural break point
-  const breakPoints = ['. ', '! ', '? ', '; ', ': ', ', '];
-  
-  for (const breakPoint of breakPoints) {
-    const lastIndex = optimized.lastIndexOf(breakPoint, MAX_DESCRIPTION_LENGTH);
-    if (lastIndex > 0 && lastIndex <= MAX_DESCRIPTION_LENGTH) {
-      return optimized.substring(0, lastIndex + 1); // Include the period or other punctuation
-    }
-  }
-  
-  // If no good breaking point, look for a space
-  const lastSpace = optimized.lastIndexOf(' ', MAX_DESCRIPTION_LENGTH - 3);
-  if (lastSpace > 0) {
-    return optimized.substring(0, lastSpace) + '...';
-  }
-  
-  // Worst case, just truncate
-  return optimized.substring(0, MAX_DESCRIPTION_LENGTH - 3) + '...';
+  return optimized.substring(0, MAX_DESCRIPTION_LENGTH);
 }
 
 // Function to detect meta title and description columns

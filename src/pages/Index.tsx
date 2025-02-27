@@ -1,20 +1,16 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { UserCircle, LogOut } from "lucide-react";
 import MetaEnhancer from "@/components/MetaEnhancer";
 import Hero from "@/components/Hero";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import AuthModal from "@/components/AuthModal";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import BrandLayout from "@/components/layout/BrandLayout";
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { user } = useAuth();
   const { toast } = useToast();
   
   // Check for payment status in URL
@@ -97,40 +93,24 @@ const Index = () => {
   }, [paymentStatus, user, navigate, setSearchParams, toast]);
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex flex-col">
-      <header className="bg-white border-b border-neutral-200">
-        <div className="container max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="text-lg font-semibold">Meta Enhancer</div>
-          
-          {user ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 text-sm">
-                <UserCircle className="h-5 w-5 text-neutral-500" />
-                <span>{user.email}</span>
-              </div>
-              <Button variant="ghost" size="sm" onClick={signOut}>
-                <LogOut className="h-4 w-4 mr-1" />
-                Sign Out
-              </Button>
+    <BrandLayout>
+      <div className="fixed inset-0 bg-neutral-50 flex items-center justify-center overflow-hidden">
+        <main className="container max-w-5xl mx-auto px-4 h-full flex flex-col justify-center pt-16 pb-16">
+          <div className="overflow-auto max-h-full">
+            <div 
+              className="bg-gradient-to-br from-white to-[#F9F0E6] p-12 rounded-xl text-center"
+              style={{ 
+                backgroundImage: 'linear-gradient(to bottom right, #FFFFFF, #F9F0E6)',
+                padding: '3rem' 
+              }}
+            >
+              <Hero />
+              <MetaEnhancer />
             </div>
-          ) : (
-            <Button variant="outline" size="sm" onClick={() => setIsAuthModalOpen(true)}>
-              Sign In / Sign Up
-            </Button>
-          )}
-        </div>
-      </header>
-      
-      <main className="flex-1 container max-w-5xl mx-auto px-4 py-12">
-        <Hero />
-        <MetaEnhancer />
-      </main>
-      
-      <AuthModal 
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
-    </div>
+          </div>
+        </main>
+      </div>
+    </BrandLayout>
   );
 };
 

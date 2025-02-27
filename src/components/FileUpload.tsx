@@ -1,4 +1,3 @@
-
 import React, { forwardRef } from "react";
 import { motion } from "framer-motion";
 import { Upload, File, X } from "lucide-react";
@@ -9,12 +8,24 @@ interface FileUploadProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   accept: string;
   maxSize: number;
+  onBeforeUpload?: (file: File) => boolean;
 }
 
 const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(
-  ({ onFileSelected, fileInputRef, accept, maxSize }, ref) => {
+  ({ onFileSelected, fileInputRef, accept, maxSize, onBeforeUpload }, ref) => {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const selectedFile = e.target.files?.[0] || null;
+      
+      if (selectedFile && onBeforeUpload) {
+        const shouldProceed = onBeforeUpload(selectedFile);
+        if (!shouldProceed) {
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+          return;
+        }
+      }
+      
       onFileSelected(selectedFile);
     };
 
@@ -30,6 +41,9 @@ const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
         const droppedFile = e.dataTransfer.files[0];
         if (droppedFile.type === "text/csv" || droppedFile.name.endsWith(".csv")) {
+          if (onBeforeUpload && !onBeforeUpload(droppedFile)) {
+            return;
+          }
           onFileSelected(droppedFile);
         }
       }

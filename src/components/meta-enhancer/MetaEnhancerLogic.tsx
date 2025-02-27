@@ -1,10 +1,20 @@
-
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { enhanceMetaStreaming, detectMetaColumns } from "@/lib/meta-enhancer";
 import { MetaData, ColumnDetectionResult } from "@/lib/types";
 import { parseCSVLine } from "@/utils/csv-parser";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  hasReachedMonthlyUsageLimit, 
+  getMaxEntriesToProcess, 
+  recordUsage,
+  initializeUsageTracking,
+  hasTooManyRows,
+  UPLOAD_LIMITS
+} from "@/lib/usage-limits";
+import UsageLimitPaywallDialog from "@/components/UsageLimitPaywallDialog";
 
 export const useMetaEnhancerLogic = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -15,9 +25,45 @@ export const useMetaEnhancerLogic = () => {
   const [columnDetection, setColumnDetection] = useState<ColumnDetectionResult | null>(null);
   const [titleColumnIndex, setTitleColumnIndex] = useState<number>(-1);
   const [descriptionColumnIndex, setDescriptionColumnIndex] = useState<number>(-1);
+  const [showUsageLimitDialog, setShowUsageLimitDialog] = useState(false);
+  const [totalEntries, setTotalEntries] = useState(0);
+  const [processedEntries, setProcessedEntries] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, isPaidUser, checkSubscriptionStatus } = useAuth();
+  
+  // Initialize usage tracking when component mounts
+  useEffect(() => {
+    initializeUsageTracking();
+  }, []);
+  
+  // Function to manually update the paid user status (if needed)
+  const updateIsPaidUser = async (status: boolean) => {
+    // If status is different from current status, force a subscription check
+    if (status !== isPaidUser) {
+      await checkSubscriptionStatus();
+    }
+  };
+
+  // Check if user can upload based on their usage limits
+  const checkUploadEligibility = (file: File): boolean => {
+    // For logged-in paid users, always allow upload
+    if (isPaidUser) {
+      return true;
+    }
+    
+    // Check if free user has reached monthly usage limit
+    if (hasReachedMonthlyUsageLimit(false)) {
+      // Show the usage limit dialog only when they try to upload
+      setShowUsageLimitDialog(true);
+      return false;
+    }
+    
+    return true;
+  };
 
   const handleFileChange = (file: File | null) => {
+    // File upload eligibility is now checked in the FileUpload component
+    // via the onBeforeUpload callback
     setFile(file);
     setEnhancedData(null);
     setIsSuccess(false);
@@ -25,6 +71,8 @@ export const useMetaEnhancerLogic = () => {
     setColumnDetection(null);
     setTitleColumnIndex(-1);
     setDescriptionColumnIndex(-1);
+    setProcessedEntries(0);
+    setTotalEntries(0);
     
     if (file) {
       detectColumns(file);
@@ -42,6 +90,17 @@ export const useMetaEnhancerLogic = () => {
           
           if (lines.length < 1) {
             throw new Error("CSV file appears to be empty or invalid");
+          }
+          
+          // Check if file has too many rows (5000 row limit)
+          if (lines.length - 1 > UPLOAD_LIMITS.MAX_ROWS_PER_FILE) { // -1 for header row
+            toast({
+              title: "File too large",
+              description: `Your file exceeds the maximum allowed limit of ${UPLOAD_LIMITS.MAX_ROWS_PER_FILE} rows. Please upload a smaller file.`,
+              variant: "destructive",
+            });
+            setFile(null);
+            return;
           }
 
           // Parse headers and detect column indices
@@ -96,11 +155,38 @@ export const useMetaEnhancerLogic = () => {
       });
       return;
     }
-
-    if (titleColumnIndex === -1 || descriptionColumnIndex === -1) {
+    
+    if (titleColumnIndex === -1 && descriptionColumnIndex === -1) {
       toast({
-        title: "Columns not selected",
-        description: "Please select both title and description columns.",
+        title: "No columns selected",
+        description: "Please select at least one column to enhance.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // For paid users, skip the usage limit checks for monthly usage
+    if (!isPaidUser) {
+      // Check if free user has reached monthly usage limit
+      if (hasReachedMonthlyUsageLimit(false)) {
+        toast({
+          title: "Monthly limit reached",
+          description: "You've reached your free monthly usage limit. Please upgrade for unlimited access.",
+          variant: "destructive",
+        });
+        setShowUsageLimitDialog(true);
+        return;
+      }
+    }
+
+    // Check if file exceeds the absolute maximum rows for any user
+    const text = await file.text();
+    const lines = text.split('\n').length;
+    
+    if (lines > UPLOAD_LIMITS.MAX_ROWS_PER_FILE) {
+      toast({
+        title: "File too large",
+        description: `Your file exceeds the maximum allowed limit of ${UPLOAD_LIMITS.MAX_ROWS_PER_FILE} rows. Please upload a smaller file.`,
         variant: "destructive",
       });
       return;
@@ -108,9 +194,23 @@ export const useMetaEnhancerLogic = () => {
 
     setIsProcessing(true);
     setIsSuccess(true);
+    setProcessedEntries(0);
     
     try {
-      const data = await parseFile(file, titleColumnIndex, descriptionColumnIndex);
+      let data = await parseFile(file, titleColumnIndex, descriptionColumnIndex);
+      
+      // Enforce maximum entries limit based on user status
+      const maxEntries = getMaxEntriesToProcess(isPaidUser);
+      if (data.length > maxEntries) {
+        toast({
+          title: "Entry limit applied",
+          description: `Processing first ${maxEntries} entries. Upgrade for higher limits.`,
+        });
+        data = data.slice(0, maxEntries);
+      }
+      
+      // Set total entries to be processed
+      setTotalEntries(data.length);
       
       // Initialize with empty placeholder data with loading status
       const initialData = data.map(item => ({
@@ -126,22 +226,49 @@ export const useMetaEnhancerLogic = () => {
       enhanceMetaStreaming(
         data,
         (index, enhancedItem) => {
+          // Update the data with the enhanced item
           setEnhancedData(prevData => {
             if (!prevData) return null;
             
             const newData = [...prevData];
+            
+            // Update the item with the new data
             newData[index] = {
               ...newData[index],
               ...enhancedItem,
-              isLoading: false
+              // If both title and description are provided, mark as not loading
+              isLoading: !('enhanced_title' in enhancedItem && 'enhanced_description' in enhancedItem)
             };
             
             return newData;
           });
+          
+          // If this update contains both title and description, increment the processed count
+          if ('enhanced_title' in enhancedItem && 'enhanced_description' in enhancedItem) {
+            setProcessedEntries(prev => Math.min(data.length, prev + 1));
+          }
         },
         () => {
+          // When all processing is complete, ensure all items are marked as not loading
+          setEnhancedData(prevData => {
+            if (!prevData) return null;
+            
+            return prevData.map(item => ({
+              ...item,
+              isLoading: false
+            }));
+          });
+          
+          // Ensure processedEntries matches totalEntries when all processing is complete
+          setProcessedEntries(data.length);
           setIsAllProcessed(true);
           setIsProcessing(false);
+          
+          // Record usage for free users
+          if (!isPaidUser) {
+            recordUsage();
+          }
+          
           toast({
             title: "Enhancement complete",
             description: `Successfully enhanced ${data.length} meta entries.`,
@@ -249,25 +376,35 @@ export const useMetaEnhancerLogic = () => {
     setIsSuccess(false);
     setIsAllProcessed(false);
     setColumnDetection(null);
+    setTotalEntries(0);
+    setProcessedEntries(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return {
     file,
+    fileInputRef,
     enhancedData,
     isProcessing,
-    isSuccess,
     isAllProcessed,
+    isSuccess,
     columnDetection,
     titleColumnIndex,
     descriptionColumnIndex,
-    fileInputRef,
+    isPaidUser,
+    updateIsPaidUser,
     handleFileChange,
     handleEnhance,
     handleDownload,
     handleDataChange,
     setTitleColumnIndex,
     setDescriptionColumnIndex,
-    resetAll
+    resetAll,
+    totalEntries,
+    processedEntries,
+    checkUploadEligibility,
+    showUsageLimitDialog,
+    setShowUsageLimitDialog,
+    hasReachedMonthlyUsageLimit
   };
 };

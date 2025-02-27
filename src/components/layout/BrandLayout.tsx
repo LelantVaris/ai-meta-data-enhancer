@@ -14,7 +14,13 @@ interface BrandLayoutProps {
 
 const BrandLayout: React.FC<BrandLayoutProps> = ({ children }) => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalView, setAuthModalView] = useState<'login' | 'signup'>('login');
   const { user, signOut } = useAuth();
+  
+  const openAuthModal = (view: 'login' | 'signup') => {
+    setAuthModalView(view);
+    setIsAuthModalOpen(true);
+  };
   
   const handleFeedbackSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -50,10 +56,10 @@ const BrandLayout: React.FC<BrandLayoutProps> = ({ children }) => {
             </Button>
           ) : (
             <>
-              <Button variant="ghost" onClick={() => setIsAuthModalOpen(true)}>
+              <Button variant="ghost" onClick={() => openAuthModal('login')}>
                 Log In
               </Button>
-              <Button variant="default" onClick={() => setIsAuthModalOpen(true)}>
+              <Button variant="default" onClick={() => openAuthModal('signup')}>
                 Get started $3.99/month
               </Button>
             </>
@@ -108,6 +114,7 @@ const BrandLayout: React.FC<BrandLayoutProps> = ({ children }) => {
       <AuthModal 
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        initialView={authModalView}
       />
     </div>
   );

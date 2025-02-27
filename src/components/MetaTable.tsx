@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Copy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -120,7 +119,7 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
         </Button>
       </div>
       
-      <div className="overflow-x-auto">
+      <div className="overflow-auto max-h-[60vh]">
         <Table>
           <TableHeader className="bg-neutral-100">
             <TableRow>

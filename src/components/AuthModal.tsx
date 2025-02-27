@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -16,15 +15,30 @@ import { Input } from "@/components/ui/input";
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialView?: 'login' | 'signup';
 }
 
-export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [isLogin, setIsLogin] = useState(true);
+export default function AuthModal({ isOpen, onClose, initialView = 'login' }: AuthModalProps) {
+  const [isLogin, setIsLogin] = useState(initialView === 'login');
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
+
+  // Update isLogin when initialView changes
+  useEffect(() => {
+    setIsLogin(initialView === 'login');
+  }, [initialView]);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setEmail("");
+      setPassword("");
+      setShowPassword(false);
+    }
+  }, [isOpen]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
