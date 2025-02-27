@@ -1,73 +1,95 @@
-# Welcome to your Lovable project
+# Meta Enhancer
 
-## Project info
+![Meta Enhancer](https://i.imgur.com/placeholder.png)
 
-**URL**: https://lovable.dev/projects/0042ead0-f3f7-45e8-96b9-1cf8f3fbaeaf
+## Overview
 
-## About This Project
+Meta Enhancer is a powerful tool designed to optimize your website's meta titles and descriptions for better SEO performance. Built with React, TypeScript, and Supabase, this application helps content creators and SEO professionals enhance their metadata quickly and efficiently.
 
-Meta Enhancer is a tool that helps you optimize your meta titles and descriptions for better SEO performance. Upload your CSV file with meta data, and our AI will enhance it by fixing character limits and improving content.
+## Features
 
-## How can I edit this code?
+- **CSV Upload**: Easily upload your CSV files containing meta titles and descriptions
+- **AI-Powered Enhancement**: Automatically optimize meta content for better SEO performance
+- **Character Limit Detection**: Identify titles and descriptions that exceed recommended character limits
+- **Missing Content Filling**: Generate appropriate content for missing meta fields
+- **User Authentication**: Secure login and signup functionality
+- **Subscription Management**: Free tier with basic features and premium subscription options
+- **Usage Tracking**: Monitor your usage within the free tier limits
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend**: React, TypeScript, Tailwind CSS
+- **UI Components**: shadcn/ui, Framer Motion
+- **Backend**: Supabase (Authentication, Database)
+- **Payment Processing**: Stripe
+- **Build Tool**: Vite
+- **Deployment**: Netlify/Vercel
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/0042ead0-f3f7-45e8-96b9-1cf8f3fbaeaf) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js (v16 or higher)
+- npm or yarn
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/LelantVaris/ai-meta-data-enhancer.git
+   cd ai-meta-data-enhancer
+   ```
 
-Follow these steps:
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+3. Set up environment variables:
+   Create a `.env.local` file in the root directory with the following variables:
+   ```
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   VITE_STRIPE_PUBLIC_KEY=your_stripe_public_key
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+4. Start the development server:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+5. Open your browser and navigate to `http://localhost:5173`
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## Usage
 
-**Edit a file directly in GitHub**
+1. **Upload CSV**: Click on the upload area to select your CSV file containing meta titles and descriptions
+2. **Select Columns**: Identify which columns contain your titles and descriptions
+3. **Enhance**: Click the "Enhance" button to process your data
+4. **Review Results**: View and edit the enhanced meta content
+5. **Download**: Export the optimized data as a CSV file
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Subscription Plans
 
-**Use GitHub Codespaces**
+- **Free Tier**: Process up to 50 entries per use, with a limit of 2 uses per month
+- **Premium**: $3.99/month for unlimited uses and up to 500 entries per use
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Contributing
 
-## What technologies are used for this project?
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-This project is built with .
+## License
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## How can I deploy this project?
+## Contact
 
-Simply open [Lovable](https://lovable.dev/projects/0042ead0-f3f7-45e8-96b9-1cf8f3fbaeaf) and click on Share -> Publish.
+For any questions or support, please contact [juliankreth@karmastudio.co](mailto:juliankreth@karmastudio.co).
 
-## I want to use a custom domain - is that possible?
+---
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+Built with ❤️ by [Karma Studio](https://karmastudio.co)
