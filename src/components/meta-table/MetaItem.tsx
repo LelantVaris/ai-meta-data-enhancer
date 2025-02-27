@@ -19,7 +19,7 @@ export const MetaItem = ({
 
   return (
     <>
-      <td className="align-top py-4 w-[450px] max-w-[450px]">
+      <td className="align-top py-4 px-4 w-[450px] max-w-[450px]">
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-1">
             <MetaStats
@@ -61,7 +61,7 @@ export const MetaItem = ({
         </div>
       </td>
       
-      <td className="align-top py-4 w-[550px] max-w-[550px]">
+      <td className="align-top py-4 px-4 w-[550px] max-w-[550px]">
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-1">
             <MetaStats
