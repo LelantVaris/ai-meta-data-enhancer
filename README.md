@@ -4,6 +4,10 @@
 
 **URL**: https://lovable.dev/projects/0042ead0-f3f7-45e8-96b9-1cf8f3fbaeaf
 
+## About This Project
+
+Meta Enhancer is a tool that helps you optimize your meta titles and descriptions for better SEO performance. Upload your CSV file with meta data, and our AI will enhance it by fixing character limits and improving content.
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
