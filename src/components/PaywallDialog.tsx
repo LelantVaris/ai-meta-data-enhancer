@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 const stripePromise = loadStripe("pk_test_51JmBHWIN4GhAoTF7YlfJXFezdVSTbwnJLV7S8BSrFxAg1309b64GYzHikSVUTUWxOCnwHPAA1O1pOEECN2bah6k900qPP6IPnj", {
   betas: ['custom_checkout_beta_5'],
@@ -658,7 +659,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       );
     }
     
-    // Default plan selection view
+    // Default plan selection view with cards instead of buttons
     return (
       <>
         <DialogHeader className="border-b p-4">
@@ -668,36 +669,48 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           </DialogDescription>
         </DialogHeader>
         
-        <div className="p-4">
-          <div className="grid grid-cols-1 gap-4">
-            <Button 
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card 
+              className="relative overflow-hidden border-2 hover:border-gray-300 transition-all cursor-pointer"
               onClick={() => selectPlan('one_time')}
-              className="w-full justify-between"
-              variant="outline"
             >
-              <div className="flex flex-col items-start">
-                <span className="font-medium">One-time Purchase</span>
-                <span className="text-xs text-muted-foreground">Download this file only</span>
-              </div>
-              <div className="flex items-center">
-                <span className="font-bold">$0.99</span>
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </div>
-            </Button>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">One-time Purchase</CardTitle>
+                <CardDescription>Download this file only</CardDescription>
+              </CardHeader>
+              <CardContent className="pb-2">
+                <div className="text-3xl font-bold">$0.99</div>
+                <p className="text-sm text-muted-foreground mt-2">Pay once for immediate access to your current CSV file.</p>
+              </CardContent>
+              <CardFooter className="pt-2">
+                <Button variant="outline" className="w-full">
+                  Select <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
             
-            <Button 
+            <Card 
+              className="relative overflow-hidden border-2 border-primary hover:shadow-md transition-all cursor-pointer"
               onClick={() => selectPlan('subscription')}
-              className="w-full justify-between"
             >
-              <div className="flex flex-col items-start">
-                <span className="font-medium">Monthly Subscription</span>
-                <span className="text-xs text-muted-foreground">Unlimited downloads</span>
+              <div className="absolute top-0 right-0 bg-primary text-white text-xs px-2 py-1 rounded-bl-lg">
+                Recommended
               </div>
-              <div className="flex items-center">
-                <span className="font-bold">$3.99/mo</span>
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </div>
-            </Button>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Monthly Subscription</CardTitle>
+                <CardDescription>Unlimited downloads</CardDescription>
+              </CardHeader>
+              <CardContent className="pb-2">
+                <div className="text-3xl font-bold">$3.99<span className="text-sm font-normal">/mo</span></div>
+                <p className="text-sm text-muted-foreground mt-2">Download unlimited CSV files every month, cancel anytime.</p>
+              </CardContent>
+              <CardFooter className="pt-2">
+                <Button className="w-full">
+                  Subscribe <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
           </div>
         </div>
         
@@ -722,7 +735,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       </Button>
       
       {open && (
-        <DialogContent className="p-0 sm:max-w-[450px]">
+        <DialogContent className="p-0 sm:max-w-[550px]">
           {renderDialogContent()}
         </DialogContent>
       )}
