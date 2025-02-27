@@ -101,13 +101,8 @@ const BrandLayout: React.FC<BrandLayoutProps> = ({ children }) => {
           </PopoverContent>
         </Popover>
 
-        {/* GitHub link (bottom right) */}
-        <Button variant="outline" className="flex items-center gap-2 bg-white/80 backdrop-blur-sm" asChild>
-          <a href="https://github.com/yourusername/meta-enhancer" target="_blank" rel="noopener noreferrer">
-            <Github className="h-4 w-4" />
-            Clone for free on GitHub
-          </a>
-        </Button>
+        {/* Empty div to maintain footer spacing after removing GitHub button */}
+        <div></div>
       </footer>
       
       {/* Auth Modal */}
