@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.2.0";
 
@@ -80,16 +79,18 @@ serve(async (req) => {
           status: 200,
         }
       );
-    } catch (stripeError: any) {
+    } catch (stripeError: unknown) {
       console.error("create-checkout-session: Stripe API error:", stripeError);
-      throw new Error(`Stripe API error: ${stripeError.message}`);
+      const errorMessage = stripeError instanceof Error ? stripeError.message : String(stripeError);
+      throw new Error(`Stripe API error: ${errorMessage}`);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("create-checkout-session: Error creating session:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     return new Response(
       JSON.stringify({ 
-        error: error.message || "Unknown error occurred",
-        details: error.toString()
+        error: errorMessage,
+        details: String(error)
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

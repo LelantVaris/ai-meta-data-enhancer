@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { ArrowRight, Check, Download, CreditCard, Mail, Lock } from "lucide-react";
 import { loadStripe, StripeCardElement } from "@stripe/stripe-js";
 import {
@@ -23,8 +22,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { PaymentStatus } from "@/types/payment";
 
-const stripePromise = loadStripe("pk_test_51JmBHWIN4GhAoTF7YlfJXFezdVSTbwnJLV7S8BSrFxAg1309b64GYzHikSVUTUWxOCnwHPAA1O1pOEECN2bah6k900qPP6IPnj", {
+// Use environment variable instead of hardcoded key
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY, {
   betas: ['custom_checkout_beta_5'],
 });
 
@@ -33,10 +34,16 @@ interface PaywallDialogProps {
   trigger?: React.ReactNode;
 }
 
-export enum PaymentStatus {
-  NOT_PAID = "not_paid",
-  ONE_TIME_PAID = "one_time_paid",
-  SUBSCRIPTION_ACTIVE = "subscription_active",
+interface StripeError {
+  message?: string;
+  type?: string;
+  code?: string;
+}
+
+interface ApiError {
+  message: string;
+  status?: number;
+  details?: unknown;
 }
 
 function CheckoutForm({ 
@@ -150,10 +157,11 @@ function CheckoutForm({
         console.error("Payment status not successful:", paymentIntent.status);
         throw new Error('Payment processing failed');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Payment error:", error);
-      setErrorMessage(error.message || 'Payment failed. Please try again.');
-      onPaymentError(error);
+      const errorMessage = error instanceof Error ? error.message : 'Payment failed. Please try again.';
+      setErrorMessage(errorMessage);
+      onPaymentError(error instanceof Error ? error : new Error(String(error)));
     } finally {
       setIsProcessing(false);
     }
@@ -228,35 +236,26 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const [authError, setAuthError] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
 
-  const ONE_TIME_PRICE_ID = 'price_1Qwne7IN4GhAoTF7Ru6kQ8mq';
-  const SUBSCRIPTION_PRICE_ID = 'price_1QwndqIN4GhAoTF7gUxlTCFx';
+  // Store price IDs in environment variables or config
+  // These are the production IDs you provided
+  const ONE_TIME_PRICE_ID = 'price_1QwmgmIN4GhAoTF75P3B2Drd';
+  const SUBSCRIPTION_PRICE_ID = 'price_1Qwmh1IN4GhAoTF78TJEw5Ek';
 
+  // Use refs to break circular dependencies
+  const handleDownloadRef = useRef<() => void>(() => {});
+  
+  // Define handleDownload first
+  const handleDownload = useCallback(() => {
+    onDownload();
+    setOpen(false);
+  }, [onDownload]);
+
+  // Set the ref after defining the function
   useEffect(() => {
-    if (!open) {
-      setSelectedPlan(null);
-      setShowAuth(false);
-      setCurrentTransaction(null);
-      setShowSuccess(false);
-      // Reset auth form
-      setEmail("");
-      setPassword("");
-      setAuthError(null);
-      setIsAuthProcessing(false);
-    } else {
-      checkSubscriptionStatus();
-    }
-  }, [open]);
+    handleDownloadRef.current = handleDownload;
+  }, [handleDownload]);
 
-  // Check subscription status whenever user changes
-  useEffect(() => {
-    if (user) {
-      checkSubscriptionStatus();
-    } else {
-      setPaymentStatus(PaymentStatus.NOT_PAID);
-    }
-  }, [user]);
-
-  const checkSubscriptionStatus = async () => {
+  const checkSubscriptionStatus = useCallback(async () => {
     if (!user) {
       setPaymentStatus(PaymentStatus.NOT_PAID);
       return;
@@ -288,7 +287,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
         setPaymentStatus(PaymentStatus.SUBSCRIPTION_ACTIVE);
         // Only auto-download if not a new subscription (success screen already showing)
         if (open && !currentTransaction && !showSuccess) {
-          handleDownload();
+          handleDownloadRef.current();
         }
       } else if (data.subscription_type === 'one_time' && data.subscription_status === 'completed') {
         console.log("User has completed one-time purchase (but no active subscription)");
@@ -301,7 +300,32 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       console.error("Error checking payment status:", error);
       setPaymentStatus(PaymentStatus.NOT_PAID);
     }
-  };
+  }, [user, open, currentTransaction, showSuccess]);
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedPlan(null);
+      setShowAuth(false);
+      setCurrentTransaction(null);
+      setShowSuccess(false);
+      // Reset auth form
+      setEmail("");
+      setPassword("");
+      setAuthError(null);
+      setIsAuthProcessing(false);
+    } else {
+      checkSubscriptionStatus();
+    }
+  }, [open, checkSubscriptionStatus]);
+
+  // Check subscription status whenever user changes
+  useEffect(() => {
+    if (user) {
+      checkSubscriptionStatus();
+    } else {
+      setPaymentStatus(PaymentStatus.NOT_PAID);
+    }
+  }, [user, checkSubscriptionStatus]);
 
   const handlePaymentSuccess = (paymentType: 'one_time' | 'subscription') => {
     if (paymentType === 'subscription') {
@@ -332,11 +356,6 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       description: error.message || "Please try again or contact support.",
       variant: "destructive",
     });
-  };
-
-  const handleDownload = () => {
-    onDownload();
-    setOpen(false);
   };
 
   const selectPlan = (plan: 'one_time' | 'subscription') => {
@@ -393,9 +412,9 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       
       setShowAuth(false);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Sign in error:", error);
-      setAuthError(error.message);
+      setAuthError(error instanceof Error ? error.message : String(error));
     } finally {
       setIsAuthProcessing(false);
     }
@@ -429,11 +448,12 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       
       setShowAuth(false);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Sign up error:", error);
       
       // Check if error is "User already registered"
-      if (error.message?.includes("already registered")) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("already registered")) {
         // Try to sign in the user instead since they already have an account
         try {
           console.log("User already exists, attempting sign in");
@@ -460,7 +480,7 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
           setAuthError("This email is already registered. Please sign in instead.");
         }
       } else {
-        setAuthError(error.message);
+        setAuthError(errorMessage);
       }
     } finally {
       setIsAuthProcessing(false);

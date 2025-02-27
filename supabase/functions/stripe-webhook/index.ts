@@ -20,6 +20,15 @@ serve(async (req) => {
     );
   }
 
+  // Verify we're using the correct environment (test vs live)
+  const isTestMode = stripeSecretKey.startsWith('sk_test_');
+  const stripeMode = isTestMode ? 'TEST MODE' : 'PRODUCTION MODE';
+  console.log(`stripe-webhook: Using Stripe in ${stripeMode}`);
+  
+  if (isTestMode) {
+    console.warn("stripe-webhook: WARNING - Using Stripe test mode. For production payments, use a live key.");
+  }
+
   const stripe = new Stripe(stripeSecretKey, {
     apiVersion: "2023-10-16",
   });
