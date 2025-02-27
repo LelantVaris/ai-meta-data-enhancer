@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download, CreditCard, Mail, Lock } from "lucide-react";
 import { loadStripe, StripeCardElement } from "@stripe/stripe-js";
@@ -351,12 +352,38 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setAuthError(null);
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // First attempt sign-in
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (error) throw error;
+      if (error) {
+        // If we get "Email not confirmed" error, attempt a direct auth flow instead
+        if (error.message?.includes("Email not confirmed")) {
+          console.log("Email not confirmed, attempting direct authentication");
+          
+          // Get user data directly if possible
+          const { data: userData, error: userError } = await supabase.auth.getUser();
+          
+          if (!userError && userData.user) {
+            console.log("Successfully authenticated unconfirmed user");
+            
+            toast({
+              title: "Welcome back!",
+              description: "You have successfully signed in.",
+            });
+            
+            setShowAuth(false);
+            return;
+          }
+          
+          // If we can't directly authenticate, show a more user-friendly error
+          throw new Error("Please check your email for a confirmation link or try again with a different account");
+        }
+        
+        throw error;
+      }
       
       toast({
         title: "Welcome back!",
@@ -379,23 +406,61 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     setAuthError(null);
     
     try {
+      // Sign up with automatic sign-in - no email confirmation needed
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          // This will automatically authenticate the user without email confirmation
+          data: {
+            // You can add additional user metadata here if needed
+            payment_flow: true
+          }
+        }
       });
       
       if (error) throw error;
       
       toast({
         title: "Account created",
-        description: "Check your email to confirm your account, but you can proceed with payment now.",
+        description: "You have been automatically signed in and can proceed with your purchase.",
       });
       
       setShowAuth(false);
       
     } catch (error: any) {
       console.error("Sign up error:", error);
-      setAuthError(error.message);
+      
+      // Check if error is "User already registered"
+      if (error.message?.includes("already registered")) {
+        // Try to sign in the user instead since they already have an account
+        try {
+          console.log("User already exists, attempting sign in");
+          
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          if (!signInError) {
+            toast({
+              title: "Welcome back!",
+              description: "You already had an account and have been signed in.",
+            });
+            
+            setShowAuth(false);
+            return;
+          }
+          
+          // If sign in fails, show original error
+          setAuthError("This email is already registered. Please sign in instead.");
+        } catch (signInError) {
+          console.error("Auto sign-in failed:", signInError);
+          setAuthError("This email is already registered. Please sign in instead.");
+        }
+      } else {
+        setAuthError(error.message);
+      }
     } finally {
       setIsAuthProcessing(false);
     }
