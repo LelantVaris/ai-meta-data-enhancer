@@ -1,4 +1,3 @@
-
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { InputSkeleton } from "@/components/ui/skeleton";
@@ -26,7 +25,7 @@ export const MetaItem = ({
               length={item.enhanced_title.length}
               wasGenerated={wasGenerated(item.original_title, item.enhanced_title)}
               wasRewritten={wasRewritten(item.original_title, item.enhanced_title)}
-              isFeatured={isFeatured}
+              isFeatured={false}
             />
             
             <CopyButton

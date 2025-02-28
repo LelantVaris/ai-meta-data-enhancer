@@ -1,4 +1,3 @@
-
 import { MetaData } from "@/lib/types";
 
 export interface MetaTableProps {
@@ -19,5 +18,5 @@ export interface MetaStatsProps {
   length: number;
   wasGenerated: boolean;
   wasRewritten: boolean;
-  isFeatured?: boolean;
+  isFeatured?: boolean; // Keeping this for backward compatibility but we won't use it
 }

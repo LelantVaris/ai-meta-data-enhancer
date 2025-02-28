@@ -31,28 +31,10 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
     return () => clearTimeout(timer);
   }, [copiedItems]);
 
-  // Find up to 3 featured items that have AI-generated content
-  const featuredItems = useMemo(() => {
-    return editableData
-      .filter(item => !item.isLoading && (
-        wasGenerated(item.original_title, item.enhanced_title) || 
-        wasGenerated(item.original_description, item.enhanced_description) ||
-        wasRewritten(item.original_title, item.enhanced_title) ||
-        wasRewritten(item.original_description, item.enhanced_description)
-      ))
-      .slice(0, 3);
+  // Previously this function filtered for "featured" items, now we'll treat all items equally
+  const allItems = useMemo(() => {
+    return editableData;
   }, [editableData]);
-
-  // The remaining items in original order, excluding featured items
-  const remainingItems = useMemo(() => {
-    const featuredIds = new Set(featuredItems.map(item => 
-      `${item.original_title}-${item.original_description}`
-    ));
-    
-    return editableData.filter(item => 
-      !featuredIds.has(`${item.original_title}-${item.original_description}`)
-    );
-  }, [editableData, featuredItems]);
 
   const copyToClipboard = (text: string, type: string, index: number) => {
     navigator.clipboard.writeText(text);
@@ -100,80 +82,48 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
     }
   };
 
-  if (data.length === 0) {
-    return <EmptyState />;
-  }
-
   return (
-    <div className="w-full bg-white rounded-lg shadow-sm border border-border overflow-hidden">
-      <div className="p-4 border-b border-border flex justify-between items-center">
-        <h3 className="font-medium text-neutral-800">Enhanced Meta Data</h3>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={copyAllToClipboard}
-          className="text-xs h-8 border-neutral-200 hover:bg-neutral-50"
-        >
-          <Copy className="h-3.5 w-3.5 mr-1.5" />
-          Copy All
-        </Button>
-      </div>
-      
-      <div className="overflow-auto max-h-[60vh]">
-        <Table>
-          <TableHeader className="bg-neutral-100">
-            <TableRow>
-              <TableHead className="w-[450px] max-w-[450px]">Meta Title</TableHead>
-              <TableHead className="w-[550px] max-w-[550px]">Meta Description</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {featuredItems.length > 0 && (
-              <>
-                {featuredItems.map((item, index) => (
-                  <TableRow key={`featured-${index}`} className="bg-blue-50/30">
+    <div>
+      {editableData.length > 0 ? (
+        <>
+          <div className="flex justify-end mb-4">
+            <Button
+              variant="outline"
+              onClick={copyAllToClipboard}
+              className="text-sm"
+            >
+              <Copy className="mr-2 h-4 w-4" />
+              Copy All
+            </Button>
+          </div>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Description</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allItems.map((item, index) => (
+                  <TableRow key={`${item.original_title}-${item.original_description}-${index}`}>
                     <MetaItem
                       item={item}
                       index={index}
-                      isFeatured={true}
+                      isFeatured={false}
                       onDataChange={handleTextChange}
                       copiedItems={copiedItems}
                       onCopy={copyToClipboard}
                     />
                   </TableRow>
                 ))}
-                <TableRow>
-                  <TableCell colSpan={2} className="py-2 px-4 bg-neutral-100">
-                    <div className="text-sm font-medium text-neutral-500">All Entries</div>
-                  </TableCell>
-                </TableRow>
-              </>
-            )}
-            
-            {remainingItems.map((item, index) => (
-              <TableRow key={`row-${index}`}>
-                <MetaItem
-                  item={item}
-                  index={index}
-                  onDataChange={handleTextChange}
-                  copiedItems={copiedItems}
-                  onCopy={copyToClipboard}
-                />
-              </TableRow>
-            ))}
-            
-            {remainingItems.length === 0 && editableData.every(item => item.isLoading) && (
-              <TableRow>
-                <TableCell colSpan={2} className="py-4 text-center">
-                  <div className="space-y-4">
-                    <p className="text-sm text-neutral-500">AI is enhancing your meta data...</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      ) : (
+        <EmptyState />
+      )}
     </div>
   );
 };
