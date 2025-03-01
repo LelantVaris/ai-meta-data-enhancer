@@ -133,7 +133,7 @@ export default function UsageLimitPaywallDialog({ open, onOpenChange }: UsageLim
             
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Upgrade for unlimited access</CardTitle>
+                <CardTitle className="text-lg">Get Unlimited Access for $4.99/month</CardTitle>
                 <CardDescription>Get premium features today</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">

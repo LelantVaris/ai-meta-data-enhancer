@@ -114,7 +114,7 @@ const MetaEnhancer = () => {
                           onClick={() => setShowUsageLimitDialog(true)}
                           className="bg-neutral-900 hover:bg-neutral-800 text-white"
                         >
-                          Upgrade for Unlimited Access
+                          Get Unlimited Access for $4.99/month
                         </Button>
                       </div>
                     ) : (
