@@ -1,0 +1,13 @@
+{
+  "root": true,
+  "overrides": [
+    {
+      "files": ["supabase/functions/**/*.ts"],
+      "rules": {
+        "@typescript-eslint/triple-slash-reference": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        "import/no-unresolved": "off"
+      }
+    }
+  ]
+} 

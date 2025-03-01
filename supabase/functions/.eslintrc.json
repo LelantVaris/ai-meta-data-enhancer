@@ -1,0 +1,9 @@
+{
+  "extends": "../../../.eslintrc.json",
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/triple-slash-reference": "off",
+    "import/no-unresolved": "off",
+    "new-cap": "off"
+  }
+} 

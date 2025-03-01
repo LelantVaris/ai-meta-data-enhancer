@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import AuthModal from "@/components/AuthModal";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 
 interface BrandLayoutProps {
   children: React.ReactNode;

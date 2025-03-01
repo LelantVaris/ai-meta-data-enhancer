@@ -1,0 +1,14 @@
+{
+  "deno.enable": true,
+  "deno.lint": true,
+  "deno.unstable": true,
+  "deno.importMap": "./import_map.json",
+  "typescript.tsdk": "../../../node_modules/typescript/lib",
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "denoland.vscode-deno",
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "eslint.enable": false
+} 

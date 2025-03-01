@@ -8,11 +8,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { FREE_TIER_LIMITS } from "@/lib/usage-limits";
 import PaywallDialog from "./PaywallDialog";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UsageLimitPaywallDialogProps {
   open: boolean;
@@ -21,8 +22,56 @@ interface UsageLimitPaywallDialogProps {
 
 export default function UsageLimitPaywallDialog({ open, onOpenChange }: UsageLimitPaywallDialogProps) {
   const [showPaywall, setShowPaywall] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(false);
   const { user } = useAuth();
   const paywallTriggerRef = useRef<HTMLButtonElement>(null);
+
+  // Check if user has an active subscription
+  useEffect(() => {
+    async function checkSubscriptionStatus() {
+      if (!user) {
+        setHasSubscription(false);
+        return;
+      }
+      
+      try {
+        console.log("Checking subscription status for user:", user.id);
+        
+        const { data, error } = await supabase
+          .from('user_subscriptions')
+          .select('subscription_status, subscription_type')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Error checking subscription status:", error);
+          setHasSubscription(false);
+          return;
+        }
+        
+        if (data && data.subscription_type === 'subscription' && data.subscription_status === 'active') {
+          console.log("User has active subscription");
+          setHasSubscription(true);
+          
+          // If the dialog is open and user has a subscription, close it
+          if (open) {
+            onOpenChange(false);
+            toast({
+              title: "Premium access active",
+              description: "You already have premium access. You can upload files without limits.",
+            });
+          }
+        } else {
+          setHasSubscription(false);
+        }
+      } catch (error) {
+        console.error("Error checking subscription status:", error);
+        setHasSubscription(false);
+      }
+    }
+    
+    checkSubscriptionStatus();
+  }, [user, open, onOpenChange]);
 
   // Effect to trigger the paywall dialog when showPaywall changes
   useEffect(() => {
@@ -30,6 +79,13 @@ export default function UsageLimitPaywallDialog({ open, onOpenChange }: UsageLim
       paywallTriggerRef.current.click();
     }
   }, [showPaywall]);
+  
+  // Reset state when dialog is closed
+  useEffect(() => {
+    if (!open) {
+      setShowPaywall(false);
+    }
+  }, [open]);
 
   // Close this dialog when the user opens the payment dialog
   const handleUpgradeClick = () => {
@@ -50,6 +106,12 @@ export default function UsageLimitPaywallDialog({ open, onOpenChange }: UsageLim
       window.location.reload();
     }, 1500);
   };
+
+  // If user already has a subscription, don't show the dialog
+  if (hasSubscription && open) {
+    onOpenChange(false);
+    return null;
+  }
 
   return (
     <>
@@ -72,7 +134,7 @@ export default function UsageLimitPaywallDialog({ open, onOpenChange }: UsageLim
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Upgrade for unlimited access</CardTitle>
-                <CardDescription>Choose a plan that works for you</CardDescription>
+                <CardDescription>Get premium features today</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 <ul className="space-y-2">
@@ -114,6 +176,8 @@ export default function UsageLimitPaywallDialog({ open, onOpenChange }: UsageLim
               Open Paywall
             </Button>
           }
+          defaultPlan="subscription"
+          skipPlanSelection={true}
         />
       </div>
     </>

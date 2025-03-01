@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 
@@ -10,6 +10,9 @@ interface AuthContextType {
   isPaidUser: boolean;
   checkSubscriptionStatus: () => Promise<boolean>;
   signOut: () => Promise<void>;
+  logAuthState: () => { user: User | null; isAuthenticated: boolean };
+  isLoading: boolean;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,9 +23,10 @@ const AuthContext = createContext<AuthContextType>({
   isPaidUser: false,
   checkSubscriptionStatus: async () => false,
   signOut: async () => {},
+  logAuthState: () => ({ user: null, isAuthenticated: false }),
+  isLoading: true,
+  isAuthenticated: false,
 });
-
-export const useAuth = () => useContext(AuthContext);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -59,16 +63,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
   }, []);
 
-  // Check subscription status whenever user changes
-  useEffect(() => {
-    if (user) {
-      checkSubscriptionStatus();
-    } else {
-      setIsPaidUser(false);
-    }
-  }, [user]);
-
-  const checkSubscriptionStatus = async (): Promise<boolean> => {
+  // Memoize checkSubscriptionStatus with useCallback to avoid dependency issues
+  const checkSubscriptionStatus = useCallback(async (): Promise<boolean> => {
     // If we have a recent check, use the cached value
     if (lastCheck && (new Date().getTime() - lastCheck.getTime()) < CACHE_EXPIRATION_MS) {
       return isPaidUser;
@@ -116,7 +112,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setIsPaidUser(false);
       return false;
     }
-  };
+  }, [user, isPaidUser, lastCheck, CACHE_EXPIRATION_MS]); // Include all dependencies
+
+  // Check subscription status whenever user changes
+  useEffect(() => {
+    if (user) {
+      checkSubscriptionStatus();
+    } else {
+      setIsPaidUser(false);
+    }
+  }, [user, checkSubscriptionStatus]); // Add checkSubscriptionStatus as dependency
 
   const signOut = async () => {
     try {
@@ -126,6 +131,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const logAuthState = useCallback(() => {
+    console.log("[AuthContext] Current auth state:");
+    console.log("[AuthContext] User:", user);
+    console.log("[AuthContext] isLoading:", loading);
+    console.log("[AuthContext] isAuthenticated:", !!user);
+    
+    // Try to get the user's subscription status if logged in
+    if (user) {
+      supabase
+        .from('user_subscriptions')
+        .select('subscription_status, subscription_type')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("[AuthContext] Error fetching subscription:", error);
+          } else {
+            console.log("[AuthContext] Subscription data:", data);
+          }
+        });
+    }
+    
+    return { user, isAuthenticated: !!user };
+  }, [user, loading]);
+
   const value = {
     session,
     user,
@@ -134,7 +164,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     isPaidUser,
     checkSubscriptionStatus,
     signOut,
+    logAuthState,
+    isLoading: loading,
+    isAuthenticated: !!user,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+// Export the context to be imported in the useAuth hook file
+export { AuthContext };

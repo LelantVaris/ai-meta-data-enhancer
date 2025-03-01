@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "esModuleInterop": true,
+    "lib": ["esnext"],
+    "module": "esnext",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "noImplicitAny": false,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "target": "esnext",
+    "paths": {
+      "https://deno.land/*": ["./node_modules/@types/deno-land/*"],
+      "https://esm.sh/*": ["./node_modules/@types/esm-sh/*"]
+    }
+  },
+  "include": ["supabase/functions/**/*.ts", "deno.d.ts"]
+} 

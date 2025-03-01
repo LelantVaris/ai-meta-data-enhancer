@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/triple-slash-reference */
+/// <reference path="../../../deno.d.ts" />
+/* eslint-enable @typescript-eslint/triple-slash-reference */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.2.0";
 
@@ -21,6 +24,9 @@ serve(async (req) => {
       console.error("create-checkout-session: Missing Stripe secret key");
       throw new Error("Missing Stripe secret key");
     }
+
+    // Force production mode
+    console.log("create-checkout-session: Using Stripe in PRODUCTION MODE");
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",

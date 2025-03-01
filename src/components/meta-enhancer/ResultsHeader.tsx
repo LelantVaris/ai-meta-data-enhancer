@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, RotateCcw, Loader2 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 

@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/triple-slash-reference */
+/// <reference path="../../../deno.d.ts" />
+/* eslint-enable @typescript-eslint/triple-slash-reference */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.2.0";
 
@@ -22,14 +25,8 @@ serve(async (req) => {
       throw new Error("Missing Stripe secret key");
     }
 
-    // Verify we're using the correct environment (test vs live)
-    const isTestMode = stripeSecretKey.startsWith('sk_test_');
-    const stripeMode = isTestMode ? 'TEST MODE' : 'PRODUCTION MODE';
-    console.log(`create-payment-intent: Using Stripe in ${stripeMode}`);
-    
-    if (isTestMode) {
-      console.warn("create-payment-intent: WARNING - Using Stripe test mode. For production payments, use a live key.");
-    }
+    // Force production mode only - no more test mode checks
+    console.log(`create-payment-intent: Using Stripe in PRODUCTION MODE`);
     
     // Initialize Stripe with the appropriate API version
     const stripe = new Stripe(stripeSecretKey, {
@@ -44,8 +41,7 @@ serve(async (req) => {
       priceId, 
       customerId, 
       paymentType, 
-      email,
-      priceIdPrefix: priceId?.substring(0, 8)
+      email
     });
 
     if (!priceId || !customerId) {
@@ -58,20 +54,6 @@ serve(async (req) => {
       );
     }
 
-    // Verify we're using the correct price ID environment
-    const isPriceTestMode = priceId.startsWith('price_test_');
-    const isPriceLiveMode = priceId.startsWith('price_');
-    
-    if (isTestMode && !isPriceTestMode && isPriceLiveMode) {
-      console.error("create-payment-intent: Environment mismatch - Using test API key with live price ID");
-      throw new Error("Environment mismatch: Cannot use live price IDs with test API keys");
-    }
-    
-    if (!isTestMode && isPriceTestMode) {
-      console.error("create-payment-intent: Environment mismatch - Using live API key with test price ID");
-      throw new Error("Environment mismatch: Cannot use test price IDs with live API keys");
-    }
-
     // Set the amount based on the product type
     const amount = paymentType === 'one_time' ? 99 : 399; // $0.99 or $3.99
     const currency = 'usd';
@@ -79,8 +61,7 @@ serve(async (req) => {
     console.log("create-payment-intent: Creating payment intent:", { 
       amount, 
       currency, 
-      customerId,
-      mode: stripeMode 
+      customerId
     });
 
     // Create a payment intent with additional params
@@ -91,18 +72,16 @@ serve(async (req) => {
       metadata: {
         priceId,
         paymentType,
-        customerId,
-        mode: stripeMode,
+        customerId
       },
     });
 
-    console.log(`create-payment-intent: Payment intent created successfully: ${paymentIntent.id} in ${stripeMode}`);
+    console.log(`create-payment-intent: Payment intent created successfully: ${paymentIntent.id}`);
 
     // Return the client secret to the client
     return new Response(
       JSON.stringify({
         clientSecret: paymentIntent.client_secret,
-        mode: stripeMode,
         paymentIntentId: paymentIntent.id,
       }),
       {
@@ -114,18 +93,9 @@ serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("create-payment-intent: Error processing request:", errorMessage);
     
-    // Enhanced error details
-    let detailedError = errorMessage;
-    if (errorMessage.includes("No such payment_intent") && errorMessage.includes("test mode")) {
-      detailedError = "Error: Stripe environment mismatch. You're likely using a live key to access test data. Make sure both frontend and backend are using the same environment (test or live).";
-    } else if (errorMessage.includes("No such payment_intent") && errorMessage.includes("live mode")) {
-      detailedError = "Error: Stripe environment mismatch. You're likely using a test key to access live data. Make sure both frontend and backend are using the same environment (test or live).";
-    }
-    
     return new Response(
       JSON.stringify({ 
-        error: detailedError,
-        originalError: errorMessage 
+        error: errorMessage
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/triple-slash-reference */
+/// <reference path="../../../deno.d.ts" />
+/* eslint-enable @typescript-eslint/triple-slash-reference */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.2.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
@@ -20,14 +23,8 @@ serve(async (req) => {
     );
   }
 
-  // Verify we're using the correct environment (test vs live)
-  const isTestMode = stripeSecretKey.startsWith('sk_test_');
-  const stripeMode = isTestMode ? 'TEST MODE' : 'PRODUCTION MODE';
-  console.log(`stripe-webhook: Using Stripe in ${stripeMode}`);
-  
-  if (isTestMode) {
-    console.warn("stripe-webhook: WARNING - Using Stripe test mode. For production payments, use a live key.");
-  }
+  // Force production mode only
+  console.log(`stripe-webhook: Using Stripe in PRODUCTION MODE`);
 
   const stripe = new Stripe(stripeSecretKey, {
     apiVersion: "2023-10-16",

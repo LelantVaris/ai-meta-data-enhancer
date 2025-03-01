@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "paths": {
+      "https://deno.land/*": ["../../../node_modules/@types/deno-land/*"],
+      "https://esm.sh/*": ["../../../node_modules/@types/esm-sh/*"]
+    }
+  },
+  "include": ["./**/*.ts", "../../../deno.d.ts"],
+  "exclude": ["node_modules"]
+} 

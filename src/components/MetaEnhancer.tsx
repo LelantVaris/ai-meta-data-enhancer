@@ -10,7 +10,7 @@ import EnhanceButton from "@/components/meta-enhancer/EnhanceButton";
 import ResultsHeader from "@/components/meta-enhancer/ResultsHeader";
 import PaywallDialog from "@/components/PaywallDialog";
 import UsageLimitPaywallDialog from "@/components/UsageLimitPaywallDialog";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { hasReachedMonthlyUsageLimit, getRemainingUses } from "@/lib/usage-limits";

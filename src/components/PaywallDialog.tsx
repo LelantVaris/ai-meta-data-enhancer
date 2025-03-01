@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaymentStatus } from "@/types/payment";
 
@@ -32,6 +32,8 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY, {
 interface PaywallDialogProps {
   onDownload: () => void;
   trigger?: React.ReactNode;
+  defaultPlan?: 'one_time' | 'subscription' | null;
+  skipPlanSelection?: boolean;
 }
 
 interface StripeError {
@@ -219,10 +221,15 @@ function CheckoutForm({
   );
 }
 
-export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProps) {
+export default function PaywallDialog({ 
+  onDownload, 
+  trigger, 
+  defaultPlan = null,
+  skipPlanSelection = false
+}: PaywallDialogProps) {
   const [open, setOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.NOT_PAID);
-  const [selectedPlan, setSelectedPlan] = useState<'one_time' | 'subscription' | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<'one_time' | 'subscription' | null>(defaultPlan);
   const [currentTransaction, setCurrentTransaction] = useState<'one_time' | 'subscription' | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
@@ -248,6 +255,11 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const handleDownload = useCallback(() => {
     onDownload();
     setOpen(false);
+    
+    // Refresh the page to ensure UI updates correctly
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   }, [onDownload]);
 
   // Set the ref after defining the function
@@ -258,11 +270,12 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
   const checkSubscriptionStatus = useCallback(async () => {
     if (!user) {
       setPaymentStatus(PaymentStatus.NOT_PAID);
+      console.log("[PaywallDialog] No user logged in, setting payment status to NOT_PAID");
       return;
     }
     
     try {
-      console.log("Checking subscription status for user:", user.id);
+      console.log("[PaywallDialog] Checking subscription status for user:", user.id);
       
       const { data, error } = await supabase
         .from('user_subscriptions')
@@ -271,40 +284,47 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
         .maybeSingle();
       
       if (error) {
-        console.error("Error checking subscription status:", error);
-        console.error("Error details:", JSON.stringify(error));
+        console.error("[PaywallDialog] Error checking subscription status:", error);
+        console.error("[PaywallDialog] Error details:", JSON.stringify(error));
         setPaymentStatus(PaymentStatus.NOT_PAID);
         return;
       }
       
-      console.log("Subscription data:", data);
+      console.log("[PaywallDialog] Subscription data:", data);
       
       if (!data) {
-        console.log("No subscription data found");
+        console.log("[PaywallDialog] No subscription data found");
         setPaymentStatus(PaymentStatus.NOT_PAID);
       } else if (data.subscription_type === 'subscription' && data.subscription_status === 'active') {
-        console.log("User has active subscription");
+        console.log("[PaywallDialog] User has active subscription");
         setPaymentStatus(PaymentStatus.SUBSCRIPTION_ACTIVE);
         // Only auto-download if not a new subscription (success screen already showing)
         if (open && !currentTransaction && !showSuccess) {
+          console.log("[PaywallDialog] Auto-downloading due to active subscription");
           handleDownloadRef.current();
         }
       } else if (data.subscription_type === 'one_time' && data.subscription_status === 'completed') {
-        console.log("User has completed one-time purchase (but no active subscription)");
+        console.log("[PaywallDialog] User has completed one-time purchase (but no active subscription)");
         setPaymentStatus(PaymentStatus.ONE_TIME_PAID);
       } else {
-        console.log("User has no active subscription");
+        console.log("[PaywallDialog] User has no active subscription, status:", data.subscription_status);
         setPaymentStatus(PaymentStatus.NOT_PAID);
       }
     } catch (error) {
-      console.error("Error checking payment status:", error);
+      console.error("[PaywallDialog] Error checking payment status:", error);
       setPaymentStatus(PaymentStatus.NOT_PAID);
     }
   }, [user, open, currentTransaction, showSuccess]);
 
   useEffect(() => {
     if (!open) {
-      setSelectedPlan(null);
+      // Only reset selectedPlan if we're not using skipPlanSelection
+      if (!skipPlanSelection) {
+        setSelectedPlan(null);
+      } else {
+        // Otherwise set to defaultPlan when dialog closes
+        setSelectedPlan(defaultPlan);
+      }
       setShowAuth(false);
       setCurrentTransaction(null);
       setShowSuccess(false);
@@ -314,9 +334,15 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       setAuthError(null);
       setIsAuthProcessing(false);
     } else {
+      // When dialog opens
       checkSubscriptionStatus();
+      
+      // If skipPlanSelection is true and user is not logged in, show auth directly
+      if (skipPlanSelection && !user) {
+        setShowAuth(true);
+      }
     }
-  }, [open, checkSubscriptionStatus]);
+  }, [open, checkSubscriptionStatus, skipPlanSelection, defaultPlan, user]);
 
   // Check subscription status whenever user changes
   useEffect(() => {
@@ -326,6 +352,17 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       setPaymentStatus(PaymentStatus.NOT_PAID);
     }
   }, [user, checkSubscriptionStatus]);
+
+  // Add this effect after the other useEffect hooks
+  useEffect(() => {
+    // This effect handles what happens after authentication when skipPlanSelection is true
+    if (user && skipPlanSelection && defaultPlan && !showSuccess && !currentTransaction) {
+      // We have a logged-in user, skipPlanSelection is true, and we have a defaultPlan
+      // Skip directly to the payment form with the defaultPlan
+      setSelectedPlan(defaultPlan);
+      setShowAuth(false);
+    }
+  }, [user, skipPlanSelection, defaultPlan, showSuccess, currentTransaction]);
 
   const handlePaymentSuccess = (paymentType: 'one_time' | 'subscription') => {
     if (paymentType === 'subscription') {
@@ -346,6 +383,11 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
     if (user) {
       setTimeout(() => {
         checkSubscriptionStatus();
+        
+        // Refresh the page after payment to update UI state
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       }, 1000); // Give a small delay to ensure DB update has propagated
     }
   };
@@ -395,6 +437,12 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
             });
             
             setShowAuth(false);
+            
+            // Refresh auth state
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+            
             return;
           }
           
@@ -411,6 +459,11 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       });
       
       setShowAuth(false);
+      
+      // Refresh auth state
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
       
     } catch (error: unknown) {
       console.error("Sign in error:", error);
@@ -448,6 +501,11 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
       
       setShowAuth(false);
       
+      // Refresh auth state
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
     } catch (error: unknown) {
       console.error("Sign up error:", error);
       
@@ -470,6 +528,12 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
             });
             
             setShowAuth(false);
+            
+            // Refresh auth state
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+            
             return;
           }
           
@@ -537,6 +601,18 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
                 Your one-time purchase is complete. This allows you to download this file only.
               </p>
             )}
+            
+            <div className="text-center text-xs text-muted-foreground">
+              <p>If the UI doesn't update automatically, you can click the button below to refresh the page.</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => window.location.reload()} 
+                className="mt-2"
+              >
+                Refresh Page
+              </Button>
+            </div>
           </div>
           
           <DialogFooter className="border-t p-4">
@@ -673,6 +749,100 @@ export default function PaywallDialog({ onDownload, trigger }: PaywallDialogProp
               className="w-full"
             >
               Back
+            </Button>
+          </DialogFooter>
+        </>
+      );
+    }
+    
+    // If skipPlanSelection is true and we have a defaultPlan, skip directly to login
+    if (skipPlanSelection && defaultPlan && !user) {
+      return (
+        <>
+          <DialogHeader className="border-b p-4">
+            <DialogTitle>{authMode === 'signin' ? 'Sign In' : 'Create Account'}</DialogTitle>
+            <DialogDescription>
+              {authMode === 'signin' 
+                ? 'Enter your credentials to access your account' 
+                : 'Create a new account to continue with your purchase'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="p-4">
+            <form onSubmit={authMode === 'signin' ? handleSignIn : handleSignUp} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="pl-10"
+                    required
+                    minLength={6}
+                  />
+                </div>
+              </div>
+              
+              {authError && (
+                <div className="text-red-500 text-sm">{authError}</div>
+              )}
+              
+              <Button type="submit" className="w-full" disabled={isAuthProcessing}>
+                {isAuthProcessing ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    {authMode === 'signin' ? 'Signing in...' : 'Creating account...'}
+                  </>
+                ) : (
+                  <>{authMode === 'signin' ? 'Sign In' : 'Create Account'}</>
+                )}
+              </Button>
+            </form>
+            
+            <div className="mt-4 text-center text-sm">
+              {authMode === 'signin' ? "Don't have an account?" : "Already have an account?"}
+              <button
+                type="button"
+                onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+                className="ml-1 font-medium text-primary hover:underline"
+              >
+                {authMode === 'signin' ? "Create one" : "Sign in"}
+              </button>
+            </div>
+          </div>
+          
+          <DialogFooter className="border-t p-4">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              onClick={() => setOpen(false)}
+              className="w-full"
+            >
+              Cancel
             </Button>
           </DialogFooter>
         </>
