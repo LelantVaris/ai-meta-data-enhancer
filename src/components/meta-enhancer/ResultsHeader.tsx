@@ -4,6 +4,7 @@ import { Download, RotateCcw, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
+import { FREE_TIER_LIMITS } from "@/lib/usage-limits";
 
 interface ResultsHeaderProps {
   dataLength: number;
@@ -60,15 +61,15 @@ const ResultsHeader = ({
                       size="sm"
                       className="px-3"
                       onClick={onDownload}
-                      disabled={!isPaidUser && dataLength > 5}
+                      disabled={!isPaidUser && dataLength > FREE_TIER_LIMITS.MAX_ENTRIES_PER_USE}
                     >
                       <Download className="mr-2 h-4 w-4" />
-                      {!isPaidUser && dataLength > 5 ? 'Upgrade to Download' : 'Download'}
+                      {!isPaidUser && dataLength > FREE_TIER_LIMITS.MAX_ENTRIES_PER_USE ? 'Upgrade to Download' : 'Download'}
                     </Button>
                   </TooltipTrigger>
-                  {!isPaidUser && dataLength > 5 && (
+                  {!isPaidUser && dataLength > FREE_TIER_LIMITS.MAX_ENTRIES_PER_USE && (
                     <TooltipContent>
-                      <p>Free users can download up to 5 items. Upgrade to download more.</p>
+                      <p>Free users can download up to {FREE_TIER_LIMITS.MAX_ENTRIES_PER_USE} items. Upgrade to download more.</p>
                     </TooltipContent>
                   )}
                 </Tooltip>
