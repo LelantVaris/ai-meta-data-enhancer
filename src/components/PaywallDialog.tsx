@@ -892,7 +892,7 @@ export default function PaywallDialog({
                 <CardDescription>Unlimited downloads</CardDescription>
               </CardHeader>
               <CardContent className="pb-2">
-                <div className="text-3xl font-bold">$3.99<span className="text-sm font-normal">/mo</span></div>
+                <div className="text-3xl font-bold">$4.99<span className="text-sm font-normal">/mo</span></div>
                 <p className="text-sm text-muted-foreground mt-2">Download unlimited CSV files every month, cancel anytime.</p>
               </CardContent>
               <CardFooter className="pt-2">

@@ -1,4 +1,3 @@
-
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,6 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface CopyButtonProps {
   onCopy: () => void;
@@ -16,6 +16,8 @@ interface CopyButtonProps {
 }
 
 export const CopyButton = ({ onCopy, isCopied, isLoading, label }: CopyButtonProps) => {
+  const isMobile = useIsMobile();
+  
   return (
     <TooltipProvider>
       <Tooltip>
@@ -23,14 +25,14 @@ export const CopyButton = ({ onCopy, isCopied, isLoading, label }: CopyButtonPro
           <Button
             variant="outline"
             size="sm"
-            className="h-6 w-6 p-0"
+            className="h-5 w-5 md:h-6 md:w-6 p-0"
             onClick={onCopy}
             disabled={isLoading}
           >
             {isCopied ? (
-              <Check className="h-3 w-3 text-green-500" />
+              <Check className="h-2.5 w-2.5 md:h-3 md:w-3 text-green-500" />
             ) : (
-              <Copy className="h-3 w-3" />
+              <Copy className="h-2.5 w-2.5 md:h-3 md:w-3" />
             )}
           </Button>
         </TooltipTrigger>

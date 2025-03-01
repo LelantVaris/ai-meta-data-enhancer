@@ -1,10 +1,10 @@
-# Meta Enhancer
+# Metakit.ai
 
-![Meta Enhancer](https://i.imgur.com/placeholder.png)
+![Metakit.ai](https://i.imgur.com/placeholder.png)
 
 ## Overview
 
-Meta Enhancer is a powerful tool designed to optimize your website's meta titles and descriptions for better SEO performance. Built with React, TypeScript, and Supabase, this application helps content creators and SEO professionals enhance their metadata quickly and efficiently.
+Metakit.ai is a powerful tool designed to optimize your website's meta titles and descriptions for better SEO performance. Built with React, TypeScript, and Supabase, this application helps content creators and SEO professionals enhance their metadata quickly and efficiently.
 
 ## Features
 
@@ -76,7 +76,7 @@ Meta Enhancer is a powerful tool designed to optimize your website's meta titles
 ## Subscription Plans
 
 - **Free Tier**: Process up to 50 entries per use, with a limit of 2 uses per month
-- **Premium**: $3.99/month for unlimited uses and up to 500 entries per use
+- **Premium**: $4.99/month for unlimited uses and up to 500 entries per use
 
 ## Contributing
 

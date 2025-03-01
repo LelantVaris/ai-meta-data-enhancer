@@ -14,10 +14,12 @@ import { MetaTableProps } from "./meta-table/MetaTableTypes";
 import { MetaItem } from "./meta-table/MetaItem";
 import { EmptyState } from "./meta-table/EmptyState";
 import { wasGenerated, wasRewritten } from "./meta-table/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
   const [copiedItems, setCopiedItems] = useState<Record<string, boolean>>({});
   const [editableData, setEditableData] = useState(data);
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     setEditableData([...data]);
@@ -90,18 +92,19 @@ const MetaTable = ({ data, onDataChange }: MetaTableProps) => {
             <Button
               variant="outline"
               onClick={copyAllToClipboard}
-              className="text-sm"
+              className="text-xs md:text-sm"
+              size={isMobile ? "sm" : "default"}
             >
-              <Copy className="mr-2 h-4 w-4" />
+              <Copy className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
               Copy All
             </Button>
           </div>
-          <div className="rounded-md border">
-            <Table>
+          <div className={`rounded-md border ${isMobile ? 'overflow-x-auto' : ''}`}>
+            <Table className={isMobile ? 'w-[800px]' : 'w-full'}>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Description</TableHead>
+                  <TableHead className="w-1/2">Title</TableHead>
+                  <TableHead className="w-1/2">Description</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

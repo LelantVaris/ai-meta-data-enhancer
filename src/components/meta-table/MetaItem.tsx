@@ -5,6 +5,7 @@ import { MetaItemProps } from "./MetaTableTypes";
 import { MetaStats } from "./MetaStats";
 import { CopyButton } from "./CopyButton";
 import { wasGenerated, wasRewritten } from "./utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const MetaItem = ({ 
   item, 
@@ -15,10 +16,11 @@ export const MetaItem = ({
   onCopy
 }: MetaItemProps) => {
   const keyPrefix = isFeatured ? 'featured' : 'regular';
+  const isMobile = useIsMobile();
 
   return (
     <>
-      <td className="align-top py-4 px-4 w-[450px] max-w-[450px]">
+      <td className="align-top py-4 px-2 md:px-4 w-1/2">
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-1">
             <MetaStats
@@ -60,7 +62,7 @@ export const MetaItem = ({
         </div>
       </td>
       
-      <td className="align-top py-4 px-4 w-[550px] max-w-[550px]">
+      <td className="align-top py-4 px-2 md:px-4 w-1/2">
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-1">
             <MetaStats

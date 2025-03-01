@@ -55,7 +55,7 @@ serve(async (req) => {
     }
 
     // Set the amount based on the product type
-    const amount = paymentType === 'one_time' ? 99 : 399; // $0.99 or $3.99
+    const amount = paymentType === 'one_time' ? 99 : 499; // $0.99 or $4.99
     const currency = 'usd';
     
     console.log("create-payment-intent: Creating payment intent:", { 

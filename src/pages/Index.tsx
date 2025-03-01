@@ -6,12 +6,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import BrandLayout from "@/components/layout/BrandLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   // Check for payment status in URL
   const paymentStatus = searchParams.get("payment_status");
@@ -95,13 +97,12 @@ const Index = () => {
   return (
     <BrandLayout>
       <div className="fixed inset-0 bg-neutral-50 flex items-center justify-center overflow-hidden">
-        <main className="container max-w-5xl mx-auto px-4 h-full flex flex-col justify-center pt-16 pb-16">
-          <div className="overflow-auto max-h-full">
+        <main className="container mx-auto px-2 md:px-4 h-full flex flex-col justify-center pt-16 pb-16 w-full max-w-4xl">
+          <div className="overflow-auto max-h-full w-full">
             <div 
-              className="bg-gradient-to-br from-white to-[#F9F0E6] p-12 rounded-xl text-center"
+              className="bg-gradient-to-br from-white to-[#F9F0E6] p-4 md:p-8 lg:p-12 rounded-xl text-center"
               style={{ 
-                backgroundImage: 'linear-gradient(to bottom right, #FFFFFF, #F9F0E6)',
-                padding: '3rem' 
+                backgroundImage: 'linear-gradient(to bottom right, #FFFFFF, #F9F0E6)'
               }}
             >
               <Hero />

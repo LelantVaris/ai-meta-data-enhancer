@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { FREE_TIER_LIMITS } from "@/lib/usage-limits";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ResultsHeaderProps {
   dataLength: number;
@@ -25,6 +26,7 @@ const ResultsHeader = ({
 }: ResultsHeaderProps) => {
   // Use the centralized subscription status from AuthContext
   const { user, isPaidUser, subscriptionLoading } = useAuth();
+  const isMobile = useIsMobile();
   
   // Calculate processing percentage
   const processingPercentage = totalEntries > 0 
@@ -32,13 +34,13 @@ const ResultsHeader = ({
     : 0;
 
   return (
-    <div className="flex flex-col space-y-2 mb-3 w-full">
-      <div className="flex justify-between items-center w-full">
-        <h2 className="text-xl font-semibold">{dataLength} Items Enhanced</h2>
+    <div className="flex flex-col space-y-2 mb-2 md:mb-3 w-full">
+      <div className={`${isMobile ? 'flex flex-col space-y-2' : 'flex justify-between items-center'} w-full`}>
+        <h2 className="text-lg md:text-xl font-semibold">{dataLength} Items Enhanced</h2>
         <div className="flex items-center space-x-2">
           {isProcessing ? (
-            <Button variant="outline" disabled className="px-3">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Button variant="outline" disabled className="px-2 md:px-3 text-xs md:text-sm" size={isMobile ? "sm" : "default"}>
+              <Loader2 className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4 animate-spin" />
               Processing...
             </Button>
           ) : (
@@ -46,10 +48,10 @@ const ResultsHeader = ({
               <Button
                 variant="outline"
                 size="sm"
-                className="px-3"
+                className="px-2 md:px-3 text-xs md:text-sm"
                 onClick={onReset}
               >
-                <RotateCcw className="mr-2 h-4 w-4" />
+                <RotateCcw className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
                 Reset
               </Button>
               
@@ -59,17 +61,19 @@ const ResultsHeader = ({
                     <Button
                       variant="default"
                       size="sm"
-                      className="px-3"
+                      className="px-2 md:px-3 text-xs md:text-sm"
                       onClick={onDownload}
                       disabled={!isPaidUser && dataLength > FREE_TIER_LIMITS.MAX_ENTRIES_PER_USE}
                     >
-                      <Download className="mr-2 h-4 w-4" />
-                      {!isPaidUser && dataLength > FREE_TIER_LIMITS.MAX_ENTRIES_PER_USE ? 'Upgrade to Download' : 'Download'}
+                      <Download className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
+                      {!isPaidUser && dataLength > FREE_TIER_LIMITS.MAX_ENTRIES_PER_USE ? 
+                        (isMobile ? 'Upgrade' : 'Upgrade to Download') : 
+                        'Download'}
                     </Button>
                   </TooltipTrigger>
                   {!isPaidUser && dataLength > FREE_TIER_LIMITS.MAX_ENTRIES_PER_USE && (
                     <TooltipContent>
-                      <p>Free users can download up to {FREE_TIER_LIMITS.MAX_ENTRIES_PER_USE} items. Upgrade to download more.</p>
+                      <p className="text-xs">Free users can download up to {FREE_TIER_LIMITS.MAX_ENTRIES_PER_USE} items. Upgrade to download more.</p>
                     </TooltipContent>
                   )}
                 </Tooltip>
@@ -84,7 +88,7 @@ const ResultsHeader = ({
         <div className="w-full">
           <Progress 
             value={processingPercentage} 
-            className="h-2 mb-1"
+            className="h-1.5 md:h-2 mb-1"
           />
           <p className="text-xs text-gray-500 text-right">
             Processing {processedEntries} of {totalEntries} items ({processingPercentage}%)

@@ -96,23 +96,23 @@ const MetaEnhancer = () => {
             transition={{ duration: 0.3 }}
           >
             <Card className="bg-white border-neutral-200">
-              <CardContent className="p-6">
+              <CardContent className="p-3 md:p-6">
                 {!file ? (
                   <>
                     {!isPaidUser && hasReachedLimit ? (
-                      <div className="border-2 border-dashed border-neutral-200 rounded-xl p-6 flex flex-col items-center justify-center text-center">
-                        <div className="bg-amber-50 p-3 rounded-full mb-3">
-                          <CreditCard className="h-6 w-6 text-amber-500" />
+                      <div className="border-2 border-dashed border-neutral-200 rounded-xl p-3 md:p-6 flex flex-col items-center justify-center text-center">
+                        <div className="bg-amber-50 p-2 md:p-3 rounded-full mb-2 md:mb-3">
+                          <CreditCard className="h-5 w-5 md:h-6 md:w-6 text-amber-500" />
                         </div>
-                        <h3 className="text-base font-medium text-neutral-800 mb-1">
+                        <h3 className="text-sm md:text-base font-medium text-neutral-800 mb-1">
                           Monthly Usage Limit Reached
                         </h3>
-                        <p className="text-sm text-neutral-500 mb-4">
+                        <p className="text-xs md:text-sm text-neutral-500 mb-3 md:mb-4">
                           You've used all your free enhancements for this month
                         </p>
                         <Button
                           onClick={() => setShowUsageLimitDialog(true)}
-                          className="bg-neutral-900 hover:bg-neutral-800 text-white"
+                          className="bg-neutral-900 hover:bg-neutral-800 text-white text-xs md:text-sm"
                         >
                           Get Unlimited Access for $4.99/month
                         </Button>
@@ -127,7 +127,7 @@ const MetaEnhancer = () => {
                           onBeforeUpload={checkUploadEligibility}
                         />
                         {!isPaidUser && (
-                          <div className="mt-3 text-center text-sm text-neutral-500">
+                          <div className="mt-2 md:mt-3 text-center text-xs md:text-sm text-neutral-500">
                             <p>Free tier: {getRemainingUses()} uses remaining this month</p>
                           </div>
                         )}
@@ -135,13 +135,13 @@ const MetaEnhancer = () => {
                     )}
                   </>
                 ) : (
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg">
-                      <div className="bg-blue-50 p-2 rounded-full">
-                        <Upload className="h-4 w-4 text-blue-600" />
+                  <div className="space-y-3 md:space-y-6">
+                    <div className="flex items-center gap-2 md:gap-3 p-2 md:p-3 bg-neutral-50 rounded-lg">
+                      <div className="bg-blue-50 p-1 md:p-2 rounded-full">
+                        <Upload className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-sm text-neutral-800">
+                        <p className="font-medium text-xs md:text-sm text-neutral-800">
                           {file.name}
                         </p>
                         <p className="text-xs text-neutral-500">
@@ -152,7 +152,7 @@ const MetaEnhancer = () => {
                         variant="ghost" 
                         size="sm" 
                         onClick={resetAll}
-                        className="text-neutral-500 hover:text-neutral-700"
+                        className="text-neutral-500 hover:text-neutral-700 text-xs"
                       >
                         Change
                       </Button>
@@ -188,7 +188,7 @@ const MetaEnhancer = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="space-y-4 overflow-visible"
+            className="space-y-2 md:space-y-4 overflow-visible"
           >
             <ResultsHeader
               dataLength={enhancedData.length}
