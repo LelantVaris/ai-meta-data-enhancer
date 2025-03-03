@@ -1,0 +1,351 @@
+import React, { useRef } from "react";
+import { motion } from "framer-motion";
+import { ArrowRight, CheckCircle, Play, Users, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import BrandLayout from "@/components/layout/BrandLayout";
+import FileUpload from "@/components/FileUpload";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const Landing = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
+  
+  // Placeholder function for file upload
+  const handleFileChange = (file: File | null) => {
+    if (file) {
+      console.log("File selected:", file.name);
+      // In a real implementation, you would process the file or redirect to the main app
+      window.location.href = "/";
+    }
+  };
+
+  return (
+    <BrandLayout>
+      <div className="bg-neutral-50">
+        {/* Hero Section */}
+        <section className="py-16 md:py-24">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <motion.div 
+              className="text-center mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-700">
+                Optimize Your Meta Tags with AI
+              </h1>
+              <p className="text-lg md:text-xl text-neutral-600 max-w-2xl mx-auto mb-8">
+                Instantly enhance your SEO performance with AI-powered meta title and description optimization. Upload your CSV and get results in seconds.
+              </p>
+              
+              <div className="max-w-xl mx-auto">
+                <FileUpload
+                  onFileSelected={handleFileChange}
+                  fileInputRef={fileInputRef}
+                  accept=".csv"
+                  maxSize={5 * 1024 * 1024} // 5MB
+                />
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Video Section */}
+        <section className="py-16 bg-white">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">See How It Works</h2>
+              <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
+                Watch our quick tutorial to see how easy it is to optimize your meta tags.
+              </p>
+            </div>
+            
+            <div className="relative aspect-video bg-neutral-100 rounded-xl overflow-hidden mx-auto max-w-3xl">
+              {/* Video placeholder */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="bg-primary/90 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 cursor-pointer hover:bg-primary transition-colors">
+                    <Play className="h-8 w-8 text-white" />
+                  </div>
+                  <p className="text-neutral-500">Video Tutorial Placeholder</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="py-16 bg-neutral-50">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Powerful Features</h2>
+              <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
+                Everything you need to optimize your meta tags and improve your SEO performance.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Feature 1 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="bg-primary/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
+                    <FileText className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">AI-Powered Optimization</h3>
+                  <p className="text-neutral-600">
+                    Our AI analyzes your content and suggests optimized meta tags that improve click-through rates.
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {/* Feature 2 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="bg-primary/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
+                    <CheckCircle className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Character Limit Checker</h3>
+                  <p className="text-neutral-600">
+                    Automatically identifies meta titles and descriptions that exceed Google's character limits.
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {/* Feature 3 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="bg-primary/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
+                    <Users className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Bulk Processing</h3>
+                  <p className="text-neutral-600">
+                    Process hundreds of meta tags at once with our efficient bulk processing system.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works Section */}
+        <section className="py-16 bg-white">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+              <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
+                Three simple steps to optimize your meta tags and improve your SEO.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Step 1 */}
+              <div className="text-center">
+                <div className="bg-primary text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-xl font-bold">1</span>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Upload Your CSV</h3>
+                <p className="text-neutral-600">
+                  Upload your CSV file containing your current meta titles and descriptions.
+                </p>
+              </div>
+              
+              {/* Step 2 */}
+              <div className="text-center">
+                <div className="bg-primary text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-xl font-bold">2</span>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">AI Enhancement</h3>
+                <p className="text-neutral-600">
+                  Our AI analyzes and optimizes your meta tags for better SEO performance.
+                </p>
+              </div>
+              
+              {/* Step 3 */}
+              <div className="text-center">
+                <div className="bg-primary text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-xl font-bold">3</span>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Download Results</h3>
+                <p className="text-neutral-600">
+                  Download your optimized meta tags as a CSV file ready for implementation.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Testimonials Section */}
+        <section className="py-16 bg-neutral-50">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Loved by Users</h2>
+              <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
+                See what our users are saying about our meta tag optimization tool.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Testimonial 1 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-start mb-4">
+                    <div className="w-12 h-12 rounded-full bg-neutral-200 mr-4">
+                      {/* User avatar placeholder */}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Sarah Johnson</h4>
+                      <p className="text-sm text-neutral-500">SEO Specialist</p>
+                    </div>
+                  </div>
+                  <p className="text-neutral-600 italic">
+                    "This tool has saved me hours of work. The AI suggestions are spot-on and have helped improve our click-through rates significantly."
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {/* Testimonial 2 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow md:mt-8">
+                <CardContent className="pt-6">
+                  <div className="flex items-start mb-4">
+                    <div className="w-12 h-12 rounded-full bg-neutral-200 mr-4">
+                      {/* User avatar placeholder */}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Michael Chen</h4>
+                      <p className="text-sm text-neutral-500">E-commerce Manager</p>
+                    </div>
+                  </div>
+                  <p className="text-neutral-600 italic">
+                    "We had thousands of product pages with suboptimal meta tags. This tool helped us optimize them all in just a few hours. Incredible time-saver!"
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {/* Testimonial 3 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-start mb-4">
+                    <div className="w-12 h-12 rounded-full bg-neutral-200 mr-4">
+                      {/* User avatar placeholder */}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Emma Rodriguez</h4>
+                      <p className="text-sm text-neutral-500">Content Marketer</p>
+                    </div>
+                  </div>
+                  <p className="text-neutral-600 italic">
+                    "The character limit checker alone is worth it. No more truncated meta descriptions in search results. Our SEO has improved dramatically."
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {/* Testimonial 4 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow md:mt-8">
+                <CardContent className="pt-6">
+                  <div className="flex items-start mb-4">
+                    <div className="w-12 h-12 rounded-full bg-neutral-200 mr-4">
+                      {/* User avatar placeholder */}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">David Wilson</h4>
+                      <p className="text-sm text-neutral-500">Digital Marketing Director</p>
+                    </div>
+                  </div>
+                  <p className="text-neutral-600 italic">
+                    "We've tried several meta tag optimization tools, but this one stands out for its accuracy and ease of use. Highly recommended for any SEO team."
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ Section */}
+        <section className="py-16 bg-white">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Frequently Asked Questions</h2>
+              <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
+                Find answers to common questions about our meta tag optimization tool.
+              </p>
+            </div>
+            
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1">
+                <AccordionTrigger className="text-left text-lg font-medium">
+                  How does the AI optimize meta tags?
+                </AccordionTrigger>
+                <AccordionContent className="text-neutral-600">
+                  Our AI analyzes your current meta tags and content to identify opportunities for improvement. It considers factors like keyword relevance, character limits, and click-through potential to suggest optimized versions that are more likely to perform well in search results.
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="item-2">
+                <AccordionTrigger className="text-left text-lg font-medium">
+                  What file format do I need to upload?
+                </AccordionTrigger>
+                <AccordionContent className="text-neutral-600">
+                  We accept CSV files with columns for your current meta titles and descriptions. The tool will automatically detect these columns, but you can also manually select them if needed.
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="item-3">
+                <AccordionTrigger className="text-left text-lg font-medium">
+                  How many meta tags can I optimize at once?
+                </AccordionTrigger>
+                <AccordionContent className="text-neutral-600">
+                  With our free plan, you can optimize up to 10 meta tags per day. Premium subscribers ($4.99/month) get unlimited optimizations and can process up to 500 entries per use.
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="item-4">
+                <AccordionTrigger className="text-left text-lg font-medium">
+                  Can I edit the AI suggestions?
+                </AccordionTrigger>
+                <AccordionContent className="text-neutral-600">
+                  Yes, you can manually edit any of the AI-suggested meta tags before downloading your results. This gives you full control over the final output while still benefiting from the AI's initial optimization.
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="item-5">
+                <AccordionTrigger className="text-left text-lg font-medium">
+                  Is my data secure?
+                </AccordionTrigger>
+                <AccordionContent className="text-neutral-600">
+                  Yes, we take data security seriously. Your uploaded files and optimized results are processed securely and are not stored on our servers after your session ends. We do not use your data for training our AI models.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-16 bg-gradient-to-br from-primary/10 to-primary/5">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="text-center">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Optimize Your Meta Tags?</h2>
+              <p className="text-lg text-neutral-600 max-w-2xl mx-auto mb-8">
+                Start improving your SEO performance today with our AI-powered meta tag optimization tool.
+              </p>
+              <Button 
+                size="lg" 
+                className="bg-primary hover:bg-primary/90 text-white font-medium px-8 py-6 h-auto text-lg"
+                onClick={() => window.location.href = "/"}
+              >
+                Get Started Now
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <p className="mt-4 text-sm text-neutral-500">
+                No credit card required for free plan. Upgrade anytime.
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </BrandLayout>
+  );
+};
+
+export default Landing; 
