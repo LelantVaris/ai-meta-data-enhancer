@@ -10,6 +10,7 @@ import EnhanceButton from "@/components/meta-enhancer/EnhanceButton";
 import ResultsHeader from "@/components/meta-enhancer/ResultsHeader";
 import PaywallDialog from "@/components/PaywallDialog";
 import UsageLimitPaywallDialog from "@/components/UsageLimitPaywallDialog";
+import DownloadPromptDialog from "@/components/DownloadPromptDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -42,12 +43,14 @@ const MetaEnhancer = forwardRef<MetaEnhancerRefType>((props, ref) => {
     resetAll,
     checkUploadEligibility,
     showUsageLimitDialog,
-    setShowUsageLimitDialog
+    setShowUsageLimitDialog,
+    isAllProcessed
   } = useMetaEnhancerLogic();
   
   // Use subscription status and loading state from AuthContext
   const { user, isPaidUser, subscriptionLoading, checkSubscriptionStatus } = useAuth();
   const [showPaywallDialog, setShowPaywallDialog] = useState(false);
+  const [showDownloadPrompt, setShowDownloadPrompt] = useState(false);
   const [hasReachedLimit, setHasReachedLimit] = useState(false);
   const paywallTriggerRef = useRef<HTMLButtonElement>(null);
   
@@ -71,30 +74,48 @@ const MetaEnhancer = forwardRef<MetaEnhancerRefType>((props, ref) => {
 
   // Check if user has reached their usage limit
   useEffect(() => {
-    // Only check for non-paid users
-    if (!isPaidUser) {
-      const remainingUses = getRemainingUses();
-      setHasReachedLimit(remainingUses <= 0);
-    } else {
-      setHasReachedLimit(false);
+    if (!subscriptionLoading) {
+      const hasReached = hasReachedMonthlyUsageLimit(isPaidUser);
+      setHasReachedLimit(hasReached);
     }
-  }, [isPaidUser]);
+  }, [isPaidUser, subscriptionLoading]);
   
+  // Show download prompt dialog for free users when processing is complete
+  useEffect(() => {
+    if (isAllProcessed && enhancedData && enhancedData.length > 0 && !isPaidUser && !showDownloadPrompt) {
+      setShowDownloadPrompt(true);
+    }
+  }, [isAllProcessed, enhancedData, isPaidUser, showDownloadPrompt]);
+
   const handlePaywallComplete = () => {
     setShowPaywallDialog(false);
-    // Force check subscription status to update UI immediately
+    // Force a subscription status check after payment
     checkSubscriptionStatus();
+  };
+  
+  // Handle download with prompt for free users
+  const handleDownloadWithPrompt = () => {
+    if (!isPaidUser) {
+      setShowDownloadPrompt(true);
+    } else {
+      handleDownload();
+    }
+  };
+  
+  // Handle subscription from download prompt
+  const handleSubscribeFromPrompt = () => {
+    setShowDownloadPrompt(false);
+    setShowPaywallDialog(true);
   };
 
   return (
-    <div className="overflow-visible">
-      {/* Remove the Usage Limit Banner */}
-      {/* <UsageLimitBanner isPaidUser={isPaidUser} /> */}
-      
-      {/* Hidden PaywallDialog trigger */}
-      <div style={{ display: 'none' }}>
-        <PaywallDialog
-          onDownload={handlePaywallComplete}
+    <div className="w-full">
+      {/* Paywall Dialog */}
+      <div className="hidden">
+        <PaywallDialog 
+          open={showPaywallDialog} 
+          onOpenChange={setShowPaywallDialog} 
+          onComplete={handlePaywallComplete}
           trigger={
             <Button ref={paywallTriggerRef}>
               Open Paywall
@@ -107,6 +128,14 @@ const MetaEnhancer = forwardRef<MetaEnhancerRefType>((props, ref) => {
       <UsageLimitPaywallDialog 
         open={showUsageLimitDialog} 
         onOpenChange={setShowUsageLimitDialog} 
+      />
+      
+      {/* Download Prompt Dialog for free users */}
+      <DownloadPromptDialog
+        open={showDownloadPrompt}
+        onOpenChange={setShowDownloadPrompt}
+        onDownload={handleDownload}
+        onSubscribe={handleSubscribeFromPrompt}
       />
       
       <AnimatePresence mode="wait">
@@ -135,52 +164,49 @@ const MetaEnhancer = forwardRef<MetaEnhancerRefType>((props, ref) => {
                         </p>
                         <Button
                           onClick={() => setShowUsageLimitDialog(true)}
-                          className="bg-neutral-900 hover:bg-neutral-800 text-white text-xs md:text-sm"
+                          variant="default"
+                          size="sm"
+                          className="text-xs md:text-sm"
                         >
-                          Get Unlimited Access for $4.99/month
+                          Upgrade for Unlimited Access
                         </Button>
                       </div>
                     ) : (
-                      <>
-                        <FileUpload
-                          onFileSelected={handleFileChange}
-                          fileInputRef={fileInputRef}
-                          accept=".csv"
-                          maxSize={2}
-                          onBeforeUpload={checkUploadEligibility}
-                        />
-                        {!isPaidUser && (
-                          <div className="mt-2 md:mt-3 text-center text-xs md:text-sm text-neutral-500">
-                            <p>Free tier: {getRemainingUses()} uses remaining this month</p>
-                          </div>
-                        )}
-                      </>
+                      <FileUpload
+                        onFileSelected={handleFileChange}
+                        fileInputRef={fileInputRef}
+                        accept=".csv"
+                        maxSize={5 * 1024 * 1024} // 5MB
+                        onBeforeUpload={checkUploadEligibility}
+                      />
                     )}
                   </>
                 ) : (
-                  <div className="space-y-3 md:space-y-6">
-                    <div className="flex items-center gap-2 md:gap-3 p-2 md:p-3 bg-neutral-50 rounded-lg">
-                      <div className="bg-blue-50 p-1 md:p-2 rounded-full">
-                        <Upload className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-xs md:text-sm text-neutral-800">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm md:text-base font-medium text-neutral-800">
                           {file.name}
-                        </p>
-                        <p className="text-xs text-neutral-500">
-                          {(file.size / 1024).toFixed(2)} KB
+                        </h3>
+                        <p className="text-xs md:text-sm text-neutral-500">
+                          {(file.size / 1024).toFixed(1)} KB
                         </p>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={resetAll}
-                        className="text-neutral-500 hover:text-neutral-700 text-xs"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          resetAll();
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }}
+                        className="text-xs"
                       >
-                        Change
+                        Remove
                       </Button>
                     </div>
-
+                    
                     {columnDetection && (
                       <ColumnSelector
                         headers={columnDetection.headers}
@@ -190,14 +216,12 @@ const MetaEnhancer = forwardRef<MetaEnhancerRefType>((props, ref) => {
                         onDescriptionColumnChange={setDescriptionColumnIndex}
                       />
                     )}
-
-                    <div className="flex justify-end">
-                      <EnhanceButton
-                        onClick={handleEnhance}
-                        isProcessing={isProcessing}
-                        disabled={titleColumnIndex === -1 || descriptionColumnIndex === -1}
-                      />
-                    </div>
+                    
+                    <EnhanceButton
+                      onClick={handleEnhance}
+                      disabled={isProcessing || (titleColumnIndex === -1 && descriptionColumnIndex === -1)}
+                      isProcessing={isProcessing}
+                    />
                   </div>
                 )}
               </CardContent>
@@ -210,20 +234,21 @@ const MetaEnhancer = forwardRef<MetaEnhancerRefType>((props, ref) => {
             key="results"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className="space-y-2 md:space-y-4 overflow-visible"
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-4"
           >
             <ResultsHeader
               dataLength={enhancedData.length}
               onReset={resetAll}
-              onDownload={handleDownload}
+              onDownload={handleDownloadWithPrompt}
               totalEntries={totalEntries}
               processedEntries={processedEntries}
               isProcessing={isProcessing}
             />
-
-            <MetaTable 
-              data={enhancedData} 
+            
+            <MetaTable
+              data={enhancedData}
               onDataChange={handleDataChange}
             />
           </motion.div>

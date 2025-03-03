@@ -30,10 +30,12 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY, {
 });
 
 interface PaywallDialogProps {
-  onDownload: () => void;
+  onComplete: () => void;
   trigger?: React.ReactNode;
   defaultPlan?: 'one_time' | 'subscription' | null;
   skipPlanSelection?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface StripeError {
@@ -222,12 +224,13 @@ function CheckoutForm({
 }
 
 export default function PaywallDialog({ 
-  onDownload, 
+  onComplete, 
   trigger, 
   defaultPlan = null,
-  skipPlanSelection = false
+  skipPlanSelection = false,
+  open = false,
+  onOpenChange
 }: PaywallDialogProps) {
-  const [open, setOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.NOT_PAID);
   const [selectedPlan, setSelectedPlan] = useState<'one_time' | 'subscription' | null>(defaultPlan);
   const [currentTransaction, setCurrentTransaction] = useState<'one_time' | 'subscription' | null>(null);
@@ -253,14 +256,14 @@ export default function PaywallDialog({
   
   // Define handleDownload first
   const handleDownload = useCallback(() => {
-    onDownload();
-    setOpen(false);
+    onComplete();
+    setShowSuccess(true);
     
     // Refresh the page to ensure UI updates correctly
     setTimeout(() => {
       window.location.reload();
     }, 500);
-  }, [onDownload]);
+  }, [onComplete]);
 
   // Set the ref after defining the function
   useEffect(() => {
@@ -554,7 +557,7 @@ export default function PaywallDialog({
   // For subscription users, just attach the download function to the trigger
   if (paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE && !currentTransaction) {
     return (
-      <span onClick={onDownload}>
+      <span onClick={onComplete}>
         {trigger}
       </span>
     );
@@ -564,12 +567,12 @@ export default function PaywallDialog({
   const handleButtonClick = () => {
     // If user has subscription but not just completed payment
     if (paymentStatus === PaymentStatus.SUBSCRIPTION_ACTIVE && !currentTransaction) {
-      onDownload();
+      onComplete();
       return;
     }
     
     // Otherwise open the dialog
-    setOpen(true);
+    onOpenChange?.(true);
   };
 
   // Render the different dialog content based on the state
@@ -839,7 +842,7 @@ export default function PaywallDialog({
             <Button 
               type="button" 
               variant="ghost" 
-              onClick={() => setOpen(false)}
+              onClick={() => onOpenChange?.(false)}
               className="w-full"
             >
               Cancel
@@ -906,7 +909,7 @@ export default function PaywallDialog({
         
         <DialogFooter className="border-t p-4">
           <DialogClose asChild>
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange?.(false)}>
               Cancel
             </Button>
           </DialogClose>
@@ -916,7 +919,7 @@ export default function PaywallDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <Button 
         onClick={handleButtonClick}
         asChild
