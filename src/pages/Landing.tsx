@@ -7,17 +7,52 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import BrandLayout from "@/components/layout/BrandLayout";
 import FileUpload from "@/components/FileUpload";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 const Landing = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   
-  // Placeholder function for file upload
+  // Handle file upload and redirect to main app
   const handleFileChange = (file: File | null) => {
     if (file) {
-      console.log("File selected:", file.name);
-      // In a real implementation, you would process the file or redirect to the main app
-      window.location.href = "/";
+      try {
+        // Check if file is a CSV
+        if (!file.name.endsWith('.csv') && file.type !== 'text/csv') {
+          toast({
+            title: "Invalid file format",
+            description: "Please upload a CSV file.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Store the file in sessionStorage to pass it to the main app
+        // We'll store the file name and create a URL for the file content
+        const fileUrl = URL.createObjectURL(file);
+        sessionStorage.setItem('pendingUploadFile', file.name);
+        sessionStorage.setItem('pendingUploadFileUrl', fileUrl);
+        
+        // Redirect to the main app
+        toast({
+          title: "File uploaded successfully",
+          description: "Redirecting to the enhancer...",
+        });
+        
+        // Short delay to allow the toast to be seen
+        setTimeout(() => {
+          navigate('/');
+        }, 1000);
+      } catch (error) {
+        console.error("Error handling file:", error);
+        toast({
+          title: "Error uploading file",
+          description: "An error occurred while processing your file.",
+          variant: "destructive",
+        });
+      }
     }
   };
 

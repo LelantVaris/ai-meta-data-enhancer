@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import BrandLayout from "@/components/layout/BrandLayout";
 import { useIsMobile } from "@/hooks/use-mobile";
+import React from "react";
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -94,6 +95,53 @@ const Index = () => {
     handlePaymentSuccess();
   }, [paymentStatus, user, navigate, setSearchParams, toast]);
 
+  // Reference to the MetaEnhancer component
+  const metaEnhancerRef = React.useRef<{ handlePendingFileUpload: (file: File) => void } | null>(null);
+
+  // Check for pending file upload from landing page
+  useEffect(() => {
+    const checkPendingFileUpload = async () => {
+      const pendingFileName = sessionStorage.getItem('pendingUploadFile');
+      const pendingFileUrl = sessionStorage.getItem('pendingUploadFileUrl');
+      
+      if (pendingFileName && pendingFileUrl) {
+        try {
+          console.log("Index: Found pending file upload:", pendingFileName);
+          
+          // Fetch the file from the URL
+          const response = await fetch(pendingFileUrl);
+          const blob = await response.blob();
+          
+          // Create a new File object
+          const file = new File([blob], pendingFileName, { type: 'text/csv' });
+          
+          // Clear the pending upload data
+          sessionStorage.removeItem('pendingUploadFile');
+          sessionStorage.removeItem('pendingUploadFileUrl');
+          
+          // Pass the file to the MetaEnhancer component
+          if (metaEnhancerRef.current) {
+            metaEnhancerRef.current.handlePendingFileUpload(file);
+          }
+        } catch (error) {
+          console.error("Index: Error processing pending file upload:", error);
+          toast({
+            title: "Error processing file",
+            description: "An error occurred while processing your uploaded file.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+    
+    // Short delay to ensure MetaEnhancer is mounted
+    const timer = setTimeout(() => {
+      checkPendingFileUpload();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   return (
     <BrandLayout>
       <div className="fixed inset-0 bg-neutral-50 flex items-center justify-center overflow-hidden">
@@ -106,7 +154,7 @@ const Index = () => {
               }}
             >
               <Hero />
-              <MetaEnhancer />
+              <MetaEnhancer ref={metaEnhancerRef} />
             </div>
           </div>
         </main>

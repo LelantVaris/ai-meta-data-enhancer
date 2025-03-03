@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Upload, Loader2, CreditCard } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +15,12 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { hasReachedMonthlyUsageLimit, getRemainingUses } from "@/lib/usage-limits";
 
-const MetaEnhancer = () => {
+// Define the ref type
+interface MetaEnhancerRefType {
+  handlePendingFileUpload: (file: File) => void;
+}
+
+const MetaEnhancer = forwardRef<MetaEnhancerRefType>((props, ref) => {
   const {
     file,
     enhancedData,
@@ -46,6 +51,24 @@ const MetaEnhancer = () => {
   const [hasReachedLimit, setHasReachedLimit] = useState(false);
   const paywallTriggerRef = useRef<HTMLButtonElement>(null);
   
+  // Expose methods to the parent component via ref
+  useImperativeHandle(ref, () => ({
+    handlePendingFileUpload: (file: File) => {
+      // Check if the file is eligible for upload
+      if (checkUploadEligibility(file)) {
+        // Process the file
+        handleFileChange(file);
+        
+        // Automatically trigger enhancement if columns are detected
+        setTimeout(() => {
+          if (titleColumnIndex !== -1 || descriptionColumnIndex !== -1) {
+            handleEnhance();
+          }
+        }, 1000); // Give time for column detection to complete
+      }
+    }
+  }));
+
   // Check if user has reached their usage limit
   useEffect(() => {
     // Only check for non-paid users
@@ -208,6 +231,8 @@ const MetaEnhancer = () => {
       </AnimatePresence>
     </div>
   );
-};
+});
+
+MetaEnhancer.displayName = "MetaEnhancer";
 
 export default MetaEnhancer;
