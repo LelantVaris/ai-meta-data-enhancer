@@ -121,6 +121,10 @@ const MetaEnhancer = forwardRef<MetaEnhancerRefType>((props, ref) => {
               Open Paywall
             </Button>
           }
+          defaultPlan="subscription"
+          skipPlanSelection={true}
+          downloadAfterPayment={true}
+          onDownloadAfterPayment={handleDownload}
         />
       </div>
       

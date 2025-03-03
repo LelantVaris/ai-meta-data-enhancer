@@ -36,6 +36,8 @@ interface PaywallDialogProps {
   skipPlanSelection?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  downloadAfterPayment?: boolean;
+  onDownloadAfterPayment?: () => void;
 }
 
 interface StripeError {
@@ -229,7 +231,9 @@ export default function PaywallDialog({
   defaultPlan = null,
   skipPlanSelection = false,
   open = false,
-  onOpenChange
+  onOpenChange,
+  downloadAfterPayment = false,
+  onDownloadAfterPayment
 }: PaywallDialogProps) {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.NOT_PAID);
   const [selectedPlan, setSelectedPlan] = useState<'one_time' | 'subscription' | null>(defaultPlan);
@@ -386,6 +390,19 @@ export default function PaywallDialog({
     if (user) {
       setTimeout(() => {
         checkSubscriptionStatus();
+        
+        // If downloadAfterPayment is true, trigger the download
+        if (downloadAfterPayment && onDownloadAfterPayment) {
+          onDownloadAfterPayment();
+        }
+        
+        // Call onComplete callback
+        onComplete();
+        
+        // Close the dialog
+        if (onOpenChange) {
+          onOpenChange(false);
+        }
         
         // Refresh the page after payment to update UI state
         setTimeout(() => {

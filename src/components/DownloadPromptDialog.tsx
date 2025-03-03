@@ -33,35 +33,32 @@ const DownloadPromptDialog = ({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-          <div className="bg-white border border-neutral-200 rounded-lg p-4 flex flex-col items-center text-center">
-            <div className="bg-neutral-100 p-3 rounded-full mb-3">
-              <Download className="h-5 w-5 text-neutral-600" />
-            </div>
-            <h3 className="font-medium mb-1">Free Download</h3>
-            <p className="text-sm text-neutral-500 mb-4">Download your current enhanced meta tags</p>
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => {
-                onDownload();
-                onOpenChange(false);
-              }}
-            >
-              Download CSV
-            </Button>
-          </div>
+        <div className="flex flex-col items-center gap-6 py-4">
+          {/* Centered Download Button */}
+          <Button 
+            variant="outline" 
+            size="lg"
+            className="w-full max-w-xs flex items-center justify-center gap-2"
+            onClick={() => {
+              onDownload();
+              onOpenChange(false);
+            }}
+          >
+            <Download className="h-5 w-5" />
+            Download CSV
+          </Button>
           
-          <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-4 flex flex-col items-center text-center">
+          {/* Premium Plan Card with Gradient Background */}
+          <div className="w-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-lg p-6 flex flex-col items-center text-center">
             <div className="bg-primary/20 p-3 rounded-full mb-3">
               <CreditCard className="h-5 w-5 text-primary" />
             </div>
-            <h3 className="font-medium mb-1">Premium Plan</h3>
-            <p className="text-sm text-neutral-500 mb-2">Unlimited downloads and enhanced features</p>
-            <p className="text-lg font-bold text-primary mb-4">$4.99<span className="text-sm font-normal">/month</span></p>
+            <h3 className="font-medium text-lg mb-1">Premium Plan</h3>
+            <p className="text-sm text-neutral-600 mb-2">Unlimited downloads and enhanced features</p>
+            <p className="text-xl font-bold text-primary mb-4">$4.99<span className="text-sm font-normal">/month</span></p>
             <Button 
               variant="default" 
-              className="w-full"
+              className="w-full max-w-xs"
               onClick={() => {
                 onSubscribe();
                 onOpenChange(false);
