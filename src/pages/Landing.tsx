@@ -24,16 +24,19 @@ const Landing = () => {
   return (
     <BrandLayout>
       <div className="bg-neutral-50">
-        {/* Hero Section */}
+        {/* Hero Section with gradient background from main page */}
         <section className="py-16 md:py-24">
           <div className="container mx-auto px-4 max-w-4xl">
             <motion.div 
-              className="text-center mb-12"
+              className="bg-gradient-to-br from-white to-[#F9F0E6] p-6 md:p-10 lg:p-16 rounded-xl text-center"
+              style={{ 
+                backgroundImage: 'linear-gradient(to bottom right, #FFFFFF, #F9F0E6)'
+              }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-700">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-neutral-900">
                 Optimize Your Meta Tags with AI
               </h1>
               <p className="text-lg md:text-xl text-neutral-600 max-w-2xl mx-auto mb-8">
@@ -76,7 +79,7 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* Features Section */}
+        {/* Features Section with image cards */}
         <section className="py-16 bg-neutral-50">
           <div className="container mx-auto px-4 max-w-4xl">
             <div className="text-center mb-12">
@@ -88,11 +91,14 @@ const Landing = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Feature 1 */}
-              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="bg-primary/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
-                    <FileText className="h-6 w-6 text-primary" />
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow overflow-hidden">
+                <div className="h-48 bg-neutral-100 relative">
+                  {/* Image placeholder */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-neutral-400">AI Optimization Image</p>
                   </div>
+                </div>
+                <CardContent className="pt-6">
                   <h3 className="text-xl font-semibold mb-2">AI-Powered Optimization</h3>
                   <p className="text-neutral-600">
                     Our AI analyzes your content and suggests optimized meta tags that improve click-through rates.
@@ -101,11 +107,14 @@ const Landing = () => {
               </Card>
               
               {/* Feature 2 */}
-              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="bg-primary/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
-                    <CheckCircle className="h-6 w-6 text-primary" />
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow overflow-hidden">
+                <div className="h-48 bg-neutral-100 relative">
+                  {/* Image placeholder */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-neutral-400">Character Limit Image</p>
                   </div>
+                </div>
+                <CardContent className="pt-6">
                   <h3 className="text-xl font-semibold mb-2">Character Limit Checker</h3>
                   <p className="text-neutral-600">
                     Automatically identifies meta titles and descriptions that exceed Google's character limits.
@@ -114,11 +123,14 @@ const Landing = () => {
               </Card>
               
               {/* Feature 3 */}
-              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="bg-primary/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
-                    <Users className="h-6 w-6 text-primary" />
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow overflow-hidden">
+                <div className="h-48 bg-neutral-100 relative">
+                  {/* Image placeholder */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-neutral-400">Bulk Processing Image</p>
                   </div>
+                </div>
+                <CardContent className="pt-6">
                   <h3 className="text-xl font-semibold mb-2">Bulk Processing</h3>
                   <p className="text-neutral-600">
                     Process hundreds of meta tags at once with our efficient bulk processing system.
@@ -176,9 +188,9 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* Testimonials Section */}
+        {/* Testimonials Section with 3 columns and 3 rows */}
         <section className="py-16 bg-neutral-50">
-          <div className="container mx-auto px-4 max-w-4xl">
+          <div className="container mx-auto px-4 max-w-5xl">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Loved by Users</h2>
               <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
@@ -186,7 +198,7 @@ const Landing = () => {
               </p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Testimonial 1 */}
               <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
                 <CardContent className="pt-6">
@@ -206,7 +218,7 @@ const Landing = () => {
               </Card>
               
               {/* Testimonial 2 */}
-              <Card className="border border-neutral-200 hover:shadow-md transition-shadow md:mt-8">
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
                 <CardContent className="pt-6">
                   <div className="flex items-start mb-4">
                     <div className="w-12 h-12 rounded-full bg-neutral-200 mr-4">
@@ -242,7 +254,7 @@ const Landing = () => {
               </Card>
               
               {/* Testimonial 4 */}
-              <Card className="border border-neutral-200 hover:shadow-md transition-shadow md:mt-8">
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
                 <CardContent className="pt-6">
                   <div className="flex items-start mb-4">
                     <div className="w-12 h-12 rounded-full bg-neutral-200 mr-4">
@@ -255,6 +267,96 @@ const Landing = () => {
                   </div>
                   <p className="text-neutral-600 italic">
                     "We've tried several meta tag optimization tools, but this one stands out for its accuracy and ease of use. Highly recommended for any SEO team."
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {/* Testimonial 5 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-start mb-4">
+                    <div className="w-12 h-12 rounded-full bg-neutral-200 mr-4">
+                      {/* User avatar placeholder */}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Jennifer Lee</h4>
+                      <p className="text-sm text-neutral-500">Marketing Manager</p>
+                    </div>
+                  </div>
+                  <p className="text-neutral-600 italic">
+                    "The AI suggestions are incredibly relevant and have helped us improve our organic traffic by over 30% in just two months."
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {/* Testimonial 6 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-start mb-4">
+                    <div className="w-12 h-12 rounded-full bg-neutral-200 mr-4">
+                      {/* User avatar placeholder */}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Robert Garcia</h4>
+                      <p className="text-sm text-neutral-500">Freelance SEO Consultant</p>
+                    </div>
+                  </div>
+                  <p className="text-neutral-600 italic">
+                    "I use this tool with all my clients now. It's become an essential part of my SEO toolkit and delivers consistent results."
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {/* Testimonial 7 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-start mb-4">
+                    <div className="w-12 h-12 rounded-full bg-neutral-200 mr-4">
+                      {/* User avatar placeholder */}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Sophia Martinez</h4>
+                      <p className="text-sm text-neutral-500">E-commerce Owner</p>
+                    </div>
+                  </div>
+                  <p className="text-neutral-600 italic">
+                    "As a small business owner, this tool has been a game-changer. I can now optimize all my product pages without hiring an expensive SEO agency."
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {/* Testimonial 8 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-start mb-4">
+                    <div className="w-12 h-12 rounded-full bg-neutral-200 mr-4">
+                      {/* User avatar placeholder */}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Thomas Brown</h4>
+                      <p className="text-sm text-neutral-500">Content Director</p>
+                    </div>
+                  </div>
+                  <p className="text-neutral-600 italic">
+                    "The bulk processing feature is a lifesaver. We optimized over 1,000 pages in a single afternoon. Worth every penny of the subscription."
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {/* Testimonial 9 */}
+              <Card className="border border-neutral-200 hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-start mb-4">
+                    <div className="w-12 h-12 rounded-full bg-neutral-200 mr-4">
+                      {/* User avatar placeholder */}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Olivia Taylor</h4>
+                      <p className="text-sm text-neutral-500">Digital Strategist</p>
+                    </div>
+                  </div>
+                  <p className="text-neutral-600 italic">
+                    "The interface is intuitive and the results are impressive. Our team has seen a measurable improvement in our search rankings since we started using this tool."
                   </p>
                 </CardContent>
               </Card>
@@ -321,10 +423,10 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-16 bg-gradient-to-br from-primary/10 to-primary/5">
+        {/* CTA Section with gradient background */}
+        <section className="py-16 bg-gradient-to-br from-white to-[#F9F0E6]">
           <div className="container mx-auto px-4 max-w-4xl">
-            <div className="text-center">
+            <div className="text-center p-8 md:p-12 rounded-xl">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Optimize Your Meta Tags?</h2>
               <p className="text-lg text-neutral-600 max-w-2xl mx-auto mb-8">
                 Start improving your SEO performance today with our AI-powered meta tag optimization tool.
