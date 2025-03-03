@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Upload, Loader2, CreditCard } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { hasReachedMonthlyUsageLimit, getRemainingUses } from "@/lib/usage-limits";
+import { redirectToStripeCheckout } from "@/lib/utils";
+import { getEnhancedDataById, getEnhancedDataBySessionId } from "@/lib/enhanced-data";
 
 // Define the ref type
 interface MetaEnhancerRefType {
@@ -44,7 +46,10 @@ const MetaEnhancer = forwardRef<MetaEnhancerRefType>((props, ref) => {
     checkUploadEligibility,
     showUsageLimitDialog,
     setShowUsageLimitDialog,
-    isAllProcessed
+    isAllProcessed,
+    setEnhancedData,
+    setColumnDetection,
+    setIsAllProcessed
   } = useMetaEnhancerLogic();
   
   // Use subscription status and loading state from AuthContext
@@ -103,10 +108,172 @@ const MetaEnhancer = forwardRef<MetaEnhancerRefType>((props, ref) => {
   };
   
   // Handle subscription from download prompt
-  const handleSubscribeFromPrompt = () => {
+  const handleSubscribeFromPrompt = async () => {
     setShowDownloadPrompt(false);
-    setShowPaywallDialog(true);
+    
+    try {
+      if (user) {
+        // For logged-in users, redirect directly to Stripe Checkout
+        await redirectToStripeCheckout(user.id, 'subscription');
+      } else {
+        // For non-logged-in users, store the intent to subscribe in localStorage
+        // and trigger the auth modal in the parent component
+        localStorage.setItem('subscribeAfterSignup', 'true');
+        localStorage.setItem('shouldDownload', 'true');
+        
+        // Store the current URL to return to after payment
+        localStorage.setItem('returnTo', window.location.pathname);
+        
+        // Emit a custom event that will be caught by the Index component
+        const event = new CustomEvent('openAuthModal', { 
+          detail: { view: 'signup' } 
+        });
+        window.dispatchEvent(event);
+      }
+    } catch (error) {
+      console.error('Error redirecting to Stripe Checkout:', error);
+      toast({
+        title: "Error",
+        description: "Failed to redirect to checkout. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
+
+  // Function to check for automatic download after payment
+  const checkDownloadAfterPayment = useCallback(async () => {
+    const shouldDownload = sessionStorage.getItem('downloadAfterPayment') === 'true';
+    
+    console.log("MetaEnhancer: checkDownloadAfterPayment called", {
+      shouldDownload,
+      isPaidUser,
+      subscriptionLoading,
+      enhancedData: enhancedData ? enhancedData.length : 0,
+      enhancedDataId: localStorage.getItem('enhancedDataId'),
+      sessionId: localStorage.getItem('enhancedDataSessionId')
+    });
+    
+    if (shouldDownload && isPaidUser) {
+      console.log("MetaEnhancer: Triggering automatic download after payment");
+      
+      // Clear the flag
+      sessionStorage.removeItem('downloadAfterPayment');
+      
+      // If we already have enhanced data, use it
+      if (enhancedData && enhancedData.length > 0) {
+        // Show success message
+        toast({
+          title: "Payment successful!",
+          description: "Your file is being downloaded automatically.",
+        });
+        
+        // Trigger the download
+        handleDownload();
+      } else {
+        // Try to load enhanced data from Supabase
+        try {
+          // First try to get by ID
+          const enhancedDataId = localStorage.getItem('enhancedDataId');
+          let enhancedDataRecord = null;
+          
+          console.log("MetaEnhancer: Trying to load enhanced data", {
+            enhancedDataId,
+            sessionId: localStorage.getItem('enhancedDataSessionId')
+          });
+          
+          if (enhancedDataId) {
+            enhancedDataRecord = await getEnhancedDataById(enhancedDataId);
+            console.log("MetaEnhancer: Data from ID lookup:", enhancedDataRecord);
+          }
+          
+          // If not found by ID, try by session ID
+          if (!enhancedDataRecord) {
+            const sessionId = localStorage.getItem('enhancedDataSessionId');
+            if (sessionId) {
+              enhancedDataRecord = await getEnhancedDataBySessionId(sessionId);
+              console.log("MetaEnhancer: Data from session ID lookup:", enhancedDataRecord);
+            }
+          }
+          
+          if (enhancedDataRecord) {
+            console.log("MetaEnhancer: Found enhanced data in Supabase");
+            
+            // Set the enhanced data
+            setEnhancedData(enhancedDataRecord.enhanced_data);
+            setColumnDetection(enhancedDataRecord.column_detection);
+            setTitleColumnIndex(enhancedDataRecord.title_column_index);
+            setDescriptionColumnIndex(enhancedDataRecord.description_column_index);
+            setIsAllProcessed(true);
+            
+            // Show success message
+            toast({
+              title: "Payment successful!",
+              description: "Your file is being downloaded automatically.",
+            });
+            
+            // Trigger the download after a short delay to ensure data is set
+            setTimeout(() => {
+              handleDownload();
+            }, 500);
+          } else {
+            console.log("MetaEnhancer: No enhanced data found in Supabase");
+            toast({
+              title: "Payment successful!",
+              description: "Your subscription is now active.",
+            });
+          }
+        } catch (error) {
+          console.error("Error loading enhanced data from Supabase:", error);
+          toast({
+            title: "Payment successful!",
+            description: "Your subscription is now active.",
+          });
+        }
+      }
+    } else if (shouldDownload && (!isPaidUser || subscriptionLoading)) {
+      // If we have the flag but the user is not recognized as paid yet,
+      // check again in a moment (subscription status might still be updating)
+      console.log("MetaEnhancer: Waiting for subscription status to update...");
+      const timer = setTimeout(() => {
+        checkSubscriptionStatus().then(() => {
+          checkDownloadAfterPayment();
+        });
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [
+    enhancedData, 
+    handleDownload, 
+    isPaidUser, 
+    subscriptionLoading, 
+    checkSubscriptionStatus, 
+    setEnhancedData, 
+    setColumnDetection, 
+    setTitleColumnIndex, 
+    setDescriptionColumnIndex, 
+    setIsAllProcessed
+  ]);
+
+  // Listen for the checkDownloadAfterPayment event
+  useEffect(() => {
+    const handleCheckDownloadEvent = () => {
+      console.log("MetaEnhancer: Received checkDownloadAfterPayment event");
+      checkDownloadAfterPayment();
+    };
+    
+    window.addEventListener('checkDownloadAfterPayment', handleCheckDownloadEvent);
+    
+    return () => {
+      window.removeEventListener('checkDownloadAfterPayment', handleCheckDownloadEvent);
+    };
+  }, [checkDownloadAfterPayment]);
+
+  // Check for automatic download after payment on initial render and when dependencies change
+  useEffect(() => {
+    // Check on initial render and when enhancedData or isPaidUser changes
+    checkDownloadAfterPayment();
+  }, [enhancedData, handleDownload, isPaidUser, subscriptionLoading, checkSubscriptionStatus, checkDownloadAfterPayment]);
 
   return (
     <div className="w-full">
